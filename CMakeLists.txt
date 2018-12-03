@@ -14,7 +14,6 @@ if (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" S
      -Wall \
      -Wextra \
      -Wconversion \
-     -Werror \
      -Wunused \
      -Wunused-function \
      -Wunused-label \
@@ -45,14 +44,19 @@ set(SOURCE_FILES
         src/main.c
         src/util/vec3.c
         src/util/color.c
+        src/util/angle.c 
         src/camera.c
-        src/ray.c)
+        src/ray.c
+        src/triangle.c)
 
 set(HEADER_FILES
         src/util/vec3.h
         src/util/color.h
+        src/util/dimension.h
+        src/util/angle.h
         src/camera.h
-        src/ray.h src/triangle.c src/triangle.h)
+        src/ray.h
+        src/triangle.h)
 
 link_libraries(m)
 
