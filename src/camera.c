@@ -17,13 +17,13 @@ static void camera_setup(Camera *camera) {
     camera->cPosition = vec3_sub(camera->position, vec3_mul(camera->n, camera->distanceToRenderTarget));
 
     // calculate LPosition leftPos on RenderTarget
-    Vec3 u_times_W_div_2 = vec3_mul(camera->u, camera->renderDim.width/2.0f);
-    Vec3 v_times_H_div2 = vec3_mul(camera->v, camera->renderDim.height/2.0f);
+    Vec3 u_times_W_div_2 = vec3_mul(camera->u, (double) camera->renderDim.width/2.0f);
+    Vec3 v_times_H_div2 = vec3_mul(camera->v, (double) camera->renderDim.height/2.0f);
     camera->lPosition = vec3_sub(vec3_sub(camera->cPosition, u_times_W_div_2), v_times_H_div2);
 }
 
 Camera *camera_create(Vec3 position, Vec3 up, Vec3 lookAt, Dimension renderDim, double hFOV) {
-    Camera* camera = malloc(sizeof(camera));
+    Camera* camera = malloc(sizeof(Camera));
     camera->position = position;
     camera->up = up;
     camera->lookAt = lookAt;
@@ -33,7 +33,7 @@ Camera *camera_create(Vec3 position, Vec3 up, Vec3 lookAt, Dimension renderDim, 
     return camera;
 }
 
-Ray camera_get_ray_for_pixel(Camera* camera, int x, int y) {
+Ray camera_ray_from_pixel(Camera *camera, int32_t x, int32_t y) {
     Vec3 uScaledByXTimesWidth = vec3_mul(camera->u, x * camera->renderDim.width);
     Vec3 vScaledByYTimesHeight = vec3_mul(camera->v, y * camera->renderDim.height);
     Vec3 pixelOnPlane = vec3_add(vec3_add(camera->lPosition, uScaledByXTimesWidth), vScaledByYTimesHeight);

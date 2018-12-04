@@ -47,7 +47,8 @@ set(SOURCE_FILES
         src/util/angle.c 
         src/camera.c
         src/ray.c
-        src/triangle.c)
+        src/triangle.c
+        src/util/image.c)
 
 set(HEADER_FILES
         src/util/vec3.h
@@ -56,7 +57,8 @@ set(HEADER_FILES
         src/util/angle.h
         src/camera.h
         src/ray.h
-        src/triangle.h)
+        src/triangle.h
+        src/util/image.h)
 
 link_libraries(m)
 

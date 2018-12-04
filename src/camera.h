@@ -16,7 +16,7 @@ typedef struct {
 } Camera;
 
 Camera* camera_create(Vec3 position, Vec3 up, Vec3 lookAt, Dimension renderDim, double hFOV);
-Ray camera_get_ray_for_pixel(Camera* cam, int x, int y);
+Ray camera_ray_from_pixel(Camera *cam, int32_t x, int32_t y);
 void camera_destroy(Camera* camera);
 
 #endif //RAYTRACER_CAMERA_H
