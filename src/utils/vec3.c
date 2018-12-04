@@ -38,9 +38,11 @@ Vec3 vec3_cross(Vec3 a, Vec3 b) {
 Vec3 vec3_norm(Vec3 a) {
     ASSERT_VECTOR_VALUE_NOT_NAN(a);
     double length = vec3_length(a);
-    a.x /= length;
-    a.y /= length;
-    a.z /= length;
+    if (length != 0) {
+        a.x /= length;
+        a.y /= length;
+        a.z /= length;
+    }
     return a;
 }
 
@@ -70,6 +72,7 @@ Vec3 vec3_mul(Vec3 a, double b) {
 Vec3 vec3_div(Vec3 a, double b) {
     ASSERT_VECTOR_VALUE_NOT_NAN(a);
     assert(!isnan(b));
+    assert(b != 0);
     a.x /= b;
     a.y /= b;
     a.z /= b;

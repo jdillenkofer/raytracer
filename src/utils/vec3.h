@@ -7,15 +7,12 @@
 #define ASSERT_VECTOR_VALUE_NOT_NAN(vec) \
     (assert(!isnan(vec.x) && !isnan(vec.y) && !isnan(vec.z)))
 
-typedef struct {
-    union {
-        double x, r;
+typedef union {
+    struct {
+        double x, y, z;
     };
-    union {
-        double y, g;
-    };
-    union {
-        double z, b;
+    struct {
+        double r, g, b;
     };
 } Vec3;
 

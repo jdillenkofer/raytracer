@@ -7,43 +7,47 @@
 static void camera_setup(Camera *camera) {
     // Setup Camera Coordinate System
     //
-    camera->z = vec3_norm(camera->position);
+    camera->z = vec3_norm(vec3_sub(camera->position, camera->lookAt));
     camera->x = vec3_norm(vec3_cross(camera->up, camera->z));
     camera->y = vec3_cross(camera->z, camera->x);
 
     // calculate Distance between RenderTarget and Eye
-    camera->distanceToRenderTarget = 1; //(camera->renderDim.width/(2.0f*tan(angle_deg2rad(camera->hFOV)/2.0f)));
+    double diagonale = sqrt((camera->width * camera->width) + (camera->height * camera->height));
+    camera->renderTargetDistance = (diagonale/(2.0f*tan(angle_deg2rad(camera->FOV)/2.0f)));
 
     // calculate CPosition centerPos on RenderTarget
-    camera->cPosition = vec3_sub(camera->position, vec3_mul(camera->z, camera->distanceToRenderTarget));
-
-    // calculate LPosition leftPos on RenderTarget
-    Vec3 cameraX_times_W_div_2 = vec3_div(camera->x, (double) camera->renderDim.width/2.0f);
-    Vec3 cameraY_times_H_div2 = vec3_div(camera->y, (double) camera->renderDim.height/2.0f);
-    camera->lPosition = vec3_sub(vec3_sub(camera->cPosition, cameraX_times_W_div_2), cameraY_times_H_div2);
+    camera->renderTargetCenter = vec3_sub(camera->position, vec3_mul(camera->z, camera->renderTargetDistance));
+    camera->renderTargetWidth = 1.0f;
+    camera->renderTargetHeight = 1.0f;
+    if (camera->width > camera->height) {
+        camera->renderTargetHeight = camera->renderTargetWidth * 1.0f/ camera->aspectRatio;
+    } else if (camera->height > camera->width) {
+        camera->renderTargetWidth = camera->renderTargetHeight * camera->aspectRatio;
+    }
 }
 
-Camera* camera_create(Vec3 position, Vec3 up, Vec3 lookAt, Dimension renderDim, double hFOV) {
+Camera* camera_create(Vec3 position, Vec3 up, Vec3 lookAt, uint32_t width, uint32_t height, double FOV) {
     Camera* camera = malloc(sizeof(Camera));
     camera->position = position;
-    camera->renderDim = renderDim;
+    camera->width = width;
+    camera->height = height;
+    camera->aspectRatio = (double) width/ (double)height;
     camera->up = up;
     camera->lookAt = lookAt;
-    camera->hFOV = hFOV;
+    camera->FOV = FOV;
     camera_setup(camera);
     return camera;
 }
 
 Ray camera_ray_from_pixel(Camera *camera, uint32_t x, uint32_t y) {
-    Vec3 cameraXScaledByXTimesWidth = vec3_mul(camera->x, x * camera->renderDim.width);
-    Vec3 cameraYScaledByYTimesHeight = vec3_mul(camera->y, y * camera->renderDim.height);
-    Vec3 pixelOnPlane = vec3_add(vec3_add(camera->lPosition, cameraXScaledByXTimesWidth), cameraYScaledByYTimesHeight);
-    double FilmY = -1.0f + 2.0f * ((double) y / (double) camera->renderDim.height);
-    double FilmX = -1.0f + 2.0f * ((double) x / (double) camera->renderDim.width);
-    Vec3 FilmP = vec3_add(vec3_add(camera->cPosition, vec3_mul(camera->x, FilmX)), vec3_mul(camera->y, FilmY));
+    double PosY = -1.0f + 2.0f * ((double) y / (double) camera->height);
+    double PosX = -1.0f + 2.0f * ((double) x / (double) camera->width);
+    Vec3 renderTargetPos = vec3_add(vec3_add(camera->renderTargetCenter,
+            vec3_mul(camera->x, PosX*camera->renderTargetWidth/2.0f)),
+            vec3_mul(camera->y, PosY*camera->renderTargetHeight/2.0f));
     Ray outgoingRay = {
         camera->position,
-        vec3_norm(vec3_sub(pixelOnPlane, camera->position))
+        vec3_norm(vec3_sub(renderTargetPos, camera->position))
     };
     return outgoingRay;
 }
