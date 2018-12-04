@@ -1,7 +1,7 @@
 #ifndef RAYTRACER_RAY_H
 #define RAYTRACER_RAY_H
 
-#include <util/vec3.h>
+#include <utils/vec3.h>
 #include <stdint.h>
 
 typedef struct {

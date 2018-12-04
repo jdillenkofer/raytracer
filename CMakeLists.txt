@@ -42,23 +42,20 @@ include_directories(src/)
 
 set(SOURCE_FILES
         src/main.c
-        src/util/vec3.c
-        src/util/color.c
-        src/util/angle.c 
+        src/utils/vec3.c
+        src/utils/angle.c
         src/camera.c
-        src/ray.c
         src/triangle.c
-        src/util/image.c)
+        src/utils/image.c)
 
 set(HEADER_FILES
-        src/util/vec3.h
-        src/util/color.h
-        src/util/dimension.h
-        src/util/angle.h
+        src/utils/vec3.h
+        src/utils/dimension.h
+        src/utils/angle.h
         src/camera.h
         src/ray.h
         src/triangle.h
-        src/util/image.h)
+        src/utils/image.h src/scene.c src/scene.h src/material.h src/sphere.h src/plane.h)
 
 link_libraries(m)
 

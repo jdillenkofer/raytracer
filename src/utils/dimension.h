@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 typedef struct {
-    int32_t width, height;
+    uint32_t width, height;
 } Dimension;
 
 #endif //RAYTRACER_DIMENSION_H

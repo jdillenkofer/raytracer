@@ -8,7 +8,15 @@
     (assert(!isnan(vec.x) && !isnan(vec.y) && !isnan(vec.z)))
 
 typedef struct {
-    double x, y, z;
+    union {
+        double x, r;
+    };
+    union {
+        double y, g;
+    };
+    union {
+        double z, b;
+    };
 } Vec3;
 
 Vec3 vec3_add(Vec3 a, Vec3 b);

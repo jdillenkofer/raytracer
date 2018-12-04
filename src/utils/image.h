@@ -6,12 +6,12 @@
 #include <stdio.h>
 
 typedef struct {
-    int32_t width, height;
+    uint32_t width, height;
     uint32_t* buffer; // Stores the data as rgba top to bottom, left to right
     uint32_t bufferSize;
 } Image;
 
-Image* image_create(int32_t width, int32_t height);
+Image* image_create(uint32_t width, uint32_t height);
 void image_destroy(Image* image);
 
 #pragma pack(push, 1)
