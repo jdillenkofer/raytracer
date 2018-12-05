@@ -60,7 +60,9 @@ int main(int argc, char* argv[]) {
     scene.pointLights = pointLights;
 
     for (uint32_t y = 0; y < height; y++) {
+#ifndef _WINDOWS
         #pragma omp parallel for
+#endif
         for (uint32_t x = 0; x < width; x++) {
             Ray ray = camera_ray_from_pixel(camera, x, y);
             Vec3 color = raytracer_raycast(&scene, &ray);
