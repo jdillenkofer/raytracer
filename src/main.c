@@ -55,7 +55,7 @@ Vec3 raycast(Scene* scene, Ray* ray) {
 int main(int argc, char* argv[]) {
     (void) argc;
     (void) argv;
-    Vec3 camera_pos = { 0.0f , 8000.0f, 1.0f };
+    Vec3 camera_pos = { 0.0f , 40.0f, 1.0f };
     Vec3 camera_up = (Vec3) {0.0f, 0.0f, -1.0f};
     Vec3 lookAt = (Vec3) {0.0f, 0.0f, 0.0f};
     uint32_t width = 1920;
