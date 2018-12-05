@@ -46,7 +46,9 @@ set(SOURCE_FILES
         src/utils/angle.c
         src/camera.c
         src/triangle.c
-        src/utils/image.c)
+        src/utils/image.c
+        src/scene.c
+        src/raytracer.c)
 
 set(HEADER_FILES
         src/utils/vec3.h
@@ -55,7 +57,12 @@ set(HEADER_FILES
         src/camera.h
         src/ray.h
         src/triangle.h
-        src/utils/image.h src/scene.c src/scene.h src/material.h src/sphere.h src/plane.h)
+        src/utils/image.h
+        src/scene.h
+        src/material.h
+        src/sphere.h
+        src/plane.h
+        src/raytracer.h)
 
 if (UNIX)
 	link_libraries(m)

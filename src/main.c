@@ -1,56 +1,9 @@
 #include <float.h>
 #include "utils/image.h"
+#include "utils/vec3.h"
 #include "camera.h"
 #include "scene.h"
-
-Vec3 raycast(Scene* scene, Ray* ray) {
-    Vec3 outColor = scene->materials[0].Color;
-
-    double epsilon = 0.0001f;
-    double hitDistance = DBL_MAX;
-
-    for (uint32_t i = 0; i < scene->planeCount; i++) {
-        Plane plane = scene->planes[i];
-
-        double denom = vec3_dot(plane.normal, ray->direction);
-        if ((denom < -epsilon) > (denom > epsilon)) {
-            double t = (-plane.distanceFromOrigin - vec3_dot(plane.normal, ray->origin)) / denom;
-            if ((t > 0) && (t < hitDistance)) {
-                hitDistance = t;
-                outColor = scene->materials[plane.materialIndex].Color;
-            }
-        }
-    }
-
-    for (uint32_t i = 0; i < scene->sphereCount; i++) {
-        Sphere sphere = scene->spheres[i];
-
-        Vec3 SphereRelativeOrigin = vec3_sub(ray->origin, sphere.position);
-        double a = vec3_dot(ray->direction, ray->direction);
-        double b = 2.0f * vec3_dot(ray->direction, SphereRelativeOrigin);
-        double c = vec3_dot(SphereRelativeOrigin, SphereRelativeOrigin) - sphere.radius * sphere.radius;
-
-        double denom = 2.0f * a;
-        double rootTerm = sqrt(b*b - 4.0f * a * c);
-
-        if (rootTerm > epsilon) {
-            double tpos = (-b + rootTerm) / denom;
-            double tneg = (-b - rootTerm) / denom;
-
-            double t = tpos;
-            // only hits in front of us, and if it is closer to us
-            if ((tneg > 0) && (tneg < tpos)) {
-                t = tneg;
-            }
-            if ((t > 0) && (t < hitDistance)) {
-                    hitDistance = t;
-                    outColor = scene->materials[sphere.materialIndex].Color;
-            }
-        }
-    }
-
-    return outColor;
-}
+#include "raytracer.h"
 
 int main(int argc, char* argv[]) {
     (void) argc;
@@ -65,11 +18,11 @@ int main(int argc, char* argv[]) {
     Image* image = image_create(width, height);
 
     Material materials[5] = {0};
-    materials[0].Color = (Vec3) { 0.53f, 0.80f, 0.92f };
-    materials[1].Color = (Vec3) { 0.4f, 0.4f, 0.4f };
-    materials[2].Color = (Vec3) { 1.0f, 0.0f, 0.0f };
-    materials[3].Color = (Vec3) { 0.0f, 1.0f, 0.0f };
-    materials[4].Color = (Vec3) { 0.0f, 0.0f, 1.0f };
+    materials[0].color = (Vec3) { 0.53f, 0.80f, 0.92f };
+    materials[1].color = (Vec3) { 0.4f, 0.4f, 0.4f };
+    materials[2].color = (Vec3) { 1.0f, 0.0f, 0.0f };
+    materials[3].color = (Vec3) { 0.0f, 1.0f, 0.0f };
+    materials[4].color = (Vec3) { 0.0f, 0.0f, 1.0f };
 
     Plane planes[1] = {0};
     planes[0].materialIndex = 1;
@@ -100,7 +53,7 @@ int main(int argc, char* argv[]) {
     for (uint32_t y = 0; y < height; y++) {
         for (uint32_t x = 0; x < width; x++) {
             Ray ray = camera_ray_from_pixel(camera, x, y);
-            Vec3 color = raycast(&scene, &ray);
+            Vec3 color = raytracer_raycast(&scene, &ray);
             // TODO: clamp values to [0,1]
             image->buffer[y*width + x] =
                     (0xFFu << 24)                     |

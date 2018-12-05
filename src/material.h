@@ -4,7 +4,7 @@
 #include "utils/vec3.h"
 
 typedef struct {
-    Vec3 Color;
+    Vec3 color;
 } Material;
 
 #endif //RAYTRACER_MATERIAL_H
