@@ -50,7 +50,7 @@ bool bitmap_save_image(const char* path, Image* image) {
     fwrite(&bitmapFileHeader, sizeof(BitmapFileHeader), 1, file);
     fwrite(&bitmapInfoHeader, sizeof(BitmapInfoHeader), 1, file);
     uint32_t bytesPerRow = (uint32_t) (image->width * sizeof(uint32_t));
-    for (uint32_t y = image->height; y > 0; y--) {
+	for (uint32_t y = image->height; y-- > 0;) {
         fwrite(&image->buffer[y * image->width], bytesPerRow, 1, file);
     }
     fclose(file);

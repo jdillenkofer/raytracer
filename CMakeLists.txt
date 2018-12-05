@@ -57,6 +57,8 @@ set(HEADER_FILES
         src/triangle.h
         src/utils/image.h src/scene.c src/scene.h src/material.h src/sphere.h src/plane.h)
 
-link_libraries(m)
+if (UNIX)
+	link_libraries(m)
+endif (UNIX)
 
 add_executable(${EXECUTABLE_NAME} ${SOURCE_FILES} ${HEADER_FILES})

@@ -1,4 +1,5 @@
 #include "angle.h"
+#define _USE_MATH_DEFINES
 #include <math.h>
 
 double angle_deg2rad(double deg) {
