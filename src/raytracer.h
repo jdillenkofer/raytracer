@@ -5,7 +5,7 @@
 #include "ray.h"
 #include "scene.h"
 
-#define EPSILON 0.0001f
+#define EPSILON 0.00001f
 
 Vec3 raytracer_raycast(Scene *scene, Ray *ray);
 

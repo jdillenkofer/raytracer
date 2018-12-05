@@ -5,10 +5,12 @@
 #include "scene.h"
 #include "raytracer.h"
 
+#include <omp.h>
+
 int main(int argc, char* argv[]) {
     (void) argc;
     (void) argv;
-    Vec3 camera_pos = { 0.0f , 40.0f, 1.0f };
+    Vec3 camera_pos = { 0.0f , 40.0f, 2.0f };
     Vec3 lookAt = (Vec3) {0.0f, 0.0f, 0.0f};
     uint32_t width = 1920;
     uint32_t height = 1080;
@@ -39,6 +41,12 @@ int main(int argc, char* argv[]) {
     spheres[2].position = (Vec3) { 3.0f, 0.0f, 2.0f };
     spheres[2].radius = 1;
 
+    PointLight pointLights[2] = {0};
+    pointLights[0].position = (Vec3) { 0.0f, 4.0f, 5.f };
+    pointLights[0].emissionColor = (Vec3) { 0.5f, 0.5f, 0.5f };
+    pointLights[1].position = (Vec3) { 0.0f, 0.0f, 5.f };
+    pointLights[1].emissionColor = (Vec3) { 1.0f, 1.0f, 1.0f };
+
     Scene scene = {0};
     scene.materialCount = 5;
     scene.materials = materials;
@@ -48,8 +56,11 @@ int main(int argc, char* argv[]) {
     scene.spheres = spheres;
     scene.triangleCount = 0;
     scene.triangles = NULL;
+    scene.pointLightCount = 2;
+    scene.pointLights = pointLights;
 
     for (uint32_t y = 0; y < height; y++) {
+        #pragma omp parallel for
         for (uint32_t x = 0; x < width; x++) {
             Ray ray = camera_ray_from_pixel(camera, x, y);
             Vec3 color = raytracer_raycast(&scene, &ray);

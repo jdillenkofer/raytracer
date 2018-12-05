@@ -35,6 +35,17 @@ Vec3 vec3_cross(Vec3 a, Vec3 b) {
     return result;
 }
 
+Vec3 vec3_hadamard(Vec3 a, Vec3 b) {
+    ASSERT_VECTOR_VALUE_NOT_NAN(a);
+    ASSERT_VECTOR_VALUE_NOT_NAN(b);
+    Vec3 result = {
+            a.x * b.x,
+            a.y * b.y,
+            a.z * b.z
+    };
+    return result;
+}
+
 Vec3 vec3_norm(Vec3 a) {
     ASSERT_VECTOR_VALUE_NOT_NAN(a);
     double length = vec3_length(a);

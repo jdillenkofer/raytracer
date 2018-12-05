@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "pointlight.h"
 #include "material.h"
 #include "plane.h"
 #include "sphere.h"
@@ -20,6 +21,9 @@ typedef struct {
 
     uint32_t triangleCount;
     Triangle *triangles;
+
+    uint32_t pointLightCount;
+    PointLight* pointLights;
 } Scene;
 
 #endif //RAYTRACER_SCENE_H

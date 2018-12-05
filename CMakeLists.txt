@@ -62,10 +62,18 @@ set(HEADER_FILES
         src/material.h
         src/sphere.h
         src/plane.h
-        src/raytracer.h)
+        src/raytracer.h
+        src/pointlight.h)
 
 if (UNIX)
 	link_libraries(m)
 endif (UNIX)
+
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+endif()
 
 add_executable(${EXECUTABLE_NAME} ${SOURCE_FILES} ${HEADER_FILES})
