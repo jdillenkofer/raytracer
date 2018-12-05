@@ -8,7 +8,6 @@
 typedef struct {
     Vec3 position;
     Vec3 x, y, z;
-    Vec3 up;
     Vec3 lookAt;
     uint32_t width, height;
     double FOV, aspectRatio;
@@ -16,7 +15,7 @@ typedef struct {
     double renderTargetWidth, renderTargetHeight, renderTargetDistance;
 } Camera;
 
-Camera* camera_create(Vec3 position, Vec3 up, Vec3 lookAt, uint32_t width, uint32_t height, double FOV);
+Camera* camera_create(Vec3 position, Vec3 lookAt, uint32_t width, uint32_t height, double FOV);
 Ray camera_ray_from_pixel(Camera *cam, uint32_t x, uint32_t y);
 void camera_destroy(Camera* camera);
 

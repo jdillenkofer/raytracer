@@ -8,7 +8,7 @@ static void camera_setup(Camera *camera) {
     // Setup Camera Coordinate System
     //
     camera->z = vec3_norm(vec3_sub(camera->position, camera->lookAt));
-    camera->x = vec3_norm(vec3_cross(camera->up, camera->z));
+    camera->x = vec3_norm(vec3_cross((Vec3) { 0, 1, 0 }, camera->z));
     camera->y = vec3_cross(camera->z, camera->x);
 
     camera->renderTargetWidth = 1.0f;
@@ -29,13 +29,12 @@ static void camera_setup(Camera *camera) {
     camera->renderTargetCenter = vec3_sub(camera->position, vec3_mul(camera->z, camera->renderTargetDistance));
 }
 
-Camera* camera_create(Vec3 position, Vec3 up, Vec3 lookAt, uint32_t width, uint32_t height, double FOV) {
+Camera* camera_create(Vec3 position, Vec3 lookAt, uint32_t width, uint32_t height, double FOV) {
     Camera* camera = malloc(sizeof(Camera));
     camera->position = position;
     camera->width = width;
     camera->height = height;
     camera->aspectRatio = (double) width/ (double)height;
-    camera->up = up;
     camera->lookAt = lookAt;
     camera->FOV = FOV;
     camera_setup(camera);

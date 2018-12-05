@@ -9,12 +9,11 @@ int main(int argc, char* argv[]) {
     (void) argc;
     (void) argv;
     Vec3 camera_pos = { 0.0f , 40.0f, 1.0f };
-    Vec3 camera_up = (Vec3) {0.0f, 0.0f, -1.0f};
     Vec3 lookAt = (Vec3) {0.0f, 0.0f, 0.0f};
     uint32_t width = 1920;
     uint32_t height = 1080;
     double FOV = 110.0f;
-    Camera* camera = camera_create(camera_pos, camera_up, lookAt, width, height, FOV);
+    Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
     Image* image = image_create(width, height);
 
     Material materials[5] = {0};
