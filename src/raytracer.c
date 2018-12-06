@@ -44,6 +44,7 @@ static bool raytracer_intersectSphere(Sphere *sphere, Ray *ray, double *hitDista
                 return true;
             }
         }
+		return false;
 }
 
 static void raytracer_calcClosestPlaneIntersect(Scene *scene, Ray *ray, double *minHitDistance,
