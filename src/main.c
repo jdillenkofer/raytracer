@@ -15,21 +15,24 @@ int main(int argc, char* argv[]) {
     uint32_t width = 1920;
     uint32_t height = 1080;
     double FOV = 110.0f;
-	uint32_t raysPerPixel = 64;
+	uint32_t raysPerPixel = 1;
     Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
     Image* image = image_create(width, height);
 
     Material materials[5] = {0};
-    materials[0].color = (Vec3) { 0.53f, 0.80f, 0.92f };
+    materials[0].color = (Vec3) { 0.0f, 0.0f, 0.0f };
     materials[1].color = (Vec3) { 0.4f, 0.4f, 0.4f };
     materials[2].color = (Vec3) { 1.0f, 0.0f, 0.0f };
     materials[3].color = (Vec3) { 0.0f, 1.0f, 0.0f };
     materials[4].color = (Vec3) { 0.0f, 0.0f, 1.0f };
 
-    Plane planes[1] = {0};
+    Plane planes[2] = {0};
     planes[0].materialIndex = 1;
     planes[0].normal = (Vec3) { 0.0f, 0.0f, 1.0f };
     planes[0].distanceFromOrigin = 0;
+    planes[1].materialIndex = 1;
+    planes[1].normal = (Vec3) { 0.0f, -1.0f, 0.0f };
+    planes[1].distanceFromOrigin = -4;
 
     Sphere spheres[3] = {0};
     spheres[0].materialIndex = 2;
@@ -45,13 +48,13 @@ int main(int argc, char* argv[]) {
     PointLight pointLights[2] = {0};
     pointLights[0].position = (Vec3) { 0.0f, 4.0f, 5.f };
     pointLights[0].emissionColor = (Vec3) { 0.5f, 0.5f, 0.5f };
-    pointLights[1].position = (Vec3) { 0.0f, 0.0f, 5.f };
-    pointLights[1].emissionColor = (Vec3) { 1.0f, 1.0f, 1.0f };
+    pointLights[1].position = (Vec3) { 0.0f, -4.0f, 5.f };
+    pointLights[1].emissionColor = (Vec3) { 0.5f, 0.5f, 0.5f };
 
     Scene scene = {0};
     scene.materialCount = 5;
     scene.materials = materials;
-    scene.planeCount = 1;
+    scene.planeCount = 2;
     scene.planes = planes;
     scene.sphereCount = 3;
     scene.spheres = spheres;
@@ -74,7 +77,13 @@ int main(int argc, char* argv[]) {
 				color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
 			}
 
-			// TODO: clamp values to [0,1]
+            // currently values are clamped to [0,1]
+            // in the future we may return doubles > 1.0
+            // and use hdr to map it back to the [0.0, 1.0] range after
+            // all pixels are calculated
+            // this would avoid that really bright areas look the "same"
+            color = vec3_clamp(color);
+
 			image->buffer[y*width + x] =
 				(0xFFu << 24) |
 				((uint32_t)(color.r * 255) << 16) |

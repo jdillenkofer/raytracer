@@ -48,7 +48,7 @@ set(SOURCE_FILES
         src/triangle.c
         src/utils/image.c
         src/scene.c
-        src/raytracer.c)
+        src/raytracer.c src/utils/random.c)
 
 set(HEADER_FILES
         src/utils/vec3.h

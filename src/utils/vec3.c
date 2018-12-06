@@ -35,6 +35,29 @@ Vec3 vec3_cross(Vec3 a, Vec3 b) {
     return result;
 }
 
+Vec3 vec3_clamp(Vec3 a) {
+    ASSERT_VECTOR_VALUE_NOT_NAN(a);
+    if (a.r > 1.0f) {
+        a.r = 1.0f;
+    }
+    if (a.g > 1.0f) {
+        a.g = 1.0f;
+    }
+    if (a.b > 1.0f) {
+        a.b = 1.0f;
+    }
+    if (a.r < 0.0f) {
+        a.r = 0.0f;
+    }
+    if (a.g < 0.0f) {
+        a.g = 0.0f;
+    }
+    if (a.b < 0.0f) {
+        a.b = 0.0f;
+    }
+    return a;
+}
+
 Vec3 vec3_hadamard(Vec3 a, Vec3 b) {
     ASSERT_VECTOR_VALUE_NOT_NAN(a);
     ASSERT_VECTOR_VALUE_NOT_NAN(b);

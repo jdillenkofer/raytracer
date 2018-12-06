@@ -1,5 +1,6 @@
 #include "camera.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include "utils/random.h"
 #include "utils/angle.h"

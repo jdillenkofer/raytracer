@@ -7,6 +7,6 @@
 
 #define EPSILON 0.00001f
 
-Vec3 raytracer_raycast(Scene *scene, Ray *ray);
+Vec3 raytracer_raycast(Scene *scene, Ray *primaryRay);
 
 #endif //RAYTRACER_RAYTRACER_H
