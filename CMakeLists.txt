@@ -52,7 +52,6 @@ set(SOURCE_FILES
 
 set(HEADER_FILES
         src/utils/vec3.h
-        src/utils/dimension.h
         src/utils/angle.h
         src/camera.h
         src/ray.h

@@ -2,7 +2,6 @@
 #define RAYTRACER_CAMERA_H
 
 #include "utils/vec3.h"
-#include "utils/dimension.h"
 #include "ray.h"
 
 typedef struct {

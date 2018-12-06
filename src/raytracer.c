@@ -46,32 +46,42 @@ static bool raytracer_intersectSphere(Sphere *sphere, Ray *ray, double *hitDista
         }
 }
 
+static void raytracer_calcClosestPlaneIntersect(Scene *scene, Ray *ray, double *minHitDistance,
+                                                uint32_t *hitMaterialIndex) {
+    for (uint32_t i = 0; i < scene->planeCount; i++) {
+        Plane* plane = &scene->planes[i];
+        double planeHitDistance = DBL_MAX;
+        if (raytracer_intersectPlane(plane, ray, &planeHitDistance)) {
+            if (planeHitDistance < *minHitDistance) {
+                *minHitDistance = planeHitDistance;
+                *hitMaterialIndex = plane->materialIndex;
+            }
+        }
+    }
+}
+
+static void raytracer_calcClosestSphereIntersect(Scene *scene, Ray *ray, double *minHitDistance,
+                                                 uint32_t *hitMaterialIndex) {
+    for (uint32_t i = 0; i < scene->sphereCount; i++) {
+        Sphere* sphere = &scene->spheres[i];
+        double sphereHitDistance = DBL_MAX;
+        if (raytracer_intersectSphere(sphere, ray, &sphereHitDistance)) {
+            if (sphereHitDistance < *minHitDistance) {
+                *minHitDistance = sphereHitDistance;
+                *hitMaterialIndex = sphere->materialIndex;
+            }
+        }
+    }
+}
+
 Vec3 raytracer_raycast(Scene* scene, Ray* ray) {
     Vec3 outColor = (Vec3) { 0.0f, 0.0f, 0.0f };
 
     double minHitDistance = DBL_MAX;
     uint32_t hitMaterialIndex = 0;
 
-    for (uint32_t i = 0; i < scene->planeCount; i++) {
-        Plane* plane = &scene->planes[i];
-        double planeHitDistance = DBL_MAX;
-        if (raytracer_intersectPlane(plane, ray, &planeHitDistance)) {
-            if (planeHitDistance < minHitDistance) {
-                minHitDistance = planeHitDistance;
-                hitMaterialIndex = plane->materialIndex;
-            }
-        }
-    }
-    for (uint32_t i = 0; i < scene->sphereCount; i++) {
-        Sphere* sphere = &scene->spheres[i];
-        double sphereHitDistance = DBL_MAX;
-        if (raytracer_intersectSphere(sphere, ray, &sphereHitDistance)) {
-            if (sphereHitDistance < minHitDistance) {
-                minHitDistance = sphereHitDistance;
-                hitMaterialIndex = sphere->materialIndex;
-            }
-        }
-    }
+    raytracer_calcClosestPlaneIntersect(scene, ray, &minHitDistance, &hitMaterialIndex);
+    raytracer_calcClosestSphereIntersect(scene, ray, &minHitDistance, &hitMaterialIndex);
 
     // if we got a hit calculate the hitPoint and send a shadow rays to each lightsource
     if (hitMaterialIndex) {
@@ -89,27 +99,10 @@ Vec3 raytracer_raycast(Scene* scene, Ray* ray) {
             // "surface agne"
             shadowRay.origin = vec3_add(hitPoint, vec3_mul(shadowRay.direction,1.0f/1000.0f));
 
+            double shadowRayHitMaterialIndex = 0;
             double closestHitDistance = DBL_MAX;
-            for (uint32_t x = 0; x < scene->planeCount; x++) {
-                Plane *plane = &scene->planes[x];
-                double shadowRayPlaneHitDistance = DBL_MAX;
-
-                if (raytracer_intersectPlane(plane, &shadowRay, &shadowRayPlaneHitDistance)) {
-                    if (shadowRayPlaneHitDistance < closestHitDistance) {
-                        closestHitDistance = shadowRayPlaneHitDistance;
-                    }
-                }
-            }
-            for (uint32_t x = 0; x < scene->sphereCount; x++) {
-                Sphere *sphere = &scene->spheres[x];
-                double shadowRaySphereDistance = DBL_MAX;
-
-                if (raytracer_intersectSphere(sphere, &shadowRay, &shadowRaySphereDistance)) {
-                    if (shadowRaySphereDistance < closestHitDistance) {
-                        closestHitDistance = shadowRaySphereDistance;
-                    }
-                }
-            }
+            raytracer_calcClosestPlaneIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayHitMaterialIndex);
+            raytracer_calcClosestSphereIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayHitMaterialIndex);
             if (distanceToLight < closestHitDistance) {
                 // we hit the light
                 outColor = vec3_add(outColor, pointLight.emissionColor);
