@@ -15,6 +15,7 @@ int main(int argc, char* argv[]) {
     uint32_t width = 1920;
     uint32_t height = 1080;
     double FOV = 110.0f;
+	uint32_t raysPerPixel = 64;
     Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
     Image* image = image_create(width, height);
 
@@ -59,20 +60,29 @@ int main(int argc, char* argv[]) {
     scene.pointLightCount = 2;
     scene.pointLights = pointLights;
 
+	double rayColorContribution = 1.0f / raysPerPixel;
+
     for (uint32_t y = 0; y < height; y++) {
 #ifndef _WINDOWS
         #pragma omp parallel for
 #endif
         for (uint32_t x = 0; x < width; x++) {
-            Ray ray = camera_ray_from_pixel(camera, x, y);
-            Vec3 color = raytracer_raycast(&scene, &ray);
-            // TODO: clamp values to [0,1]
-            image->buffer[y*width + x] =
-                    (0xFFu << 24)                     |
-                    ((uint32_t) (color.r * 255) << 16)|
-                    ((uint32_t) (color.g * 255) << 8) |
-                    ((uint32_t) (color.b * 255) << 0);
+			Vec3 color = {0};
+			for (uint32_t i = 0; i < raysPerPixel; i++) {
+				Ray ray = camera_rayFromPixelPos(camera, x, y);
+				Vec3 currentRayColor = raytracer_raycast(&scene, &ray);
+				color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
+			}
+
+			// TODO: clamp values to [0,1]
+			image->buffer[y*width + x] =
+				(0xFFu << 24) |
+				((uint32_t)(color.r * 255) << 16) |
+				((uint32_t)(color.g * 255) << 8) |
+				((uint32_t)(color.b * 255) << 0);
+
         }
+		printf("\rRaytracing %d%%", (uint32_t)(100 * ((double)(y) / (double)(height))));
     }
 
     bitmap_save_image("test.bmp", image);

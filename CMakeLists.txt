@@ -53,6 +53,7 @@ set(SOURCE_FILES
 set(HEADER_FILES
         src/utils/vec3.h
         src/utils/angle.h
+		src/utils/random.h
         src/camera.h
         src/triangle.h
         src/utils/image.h
