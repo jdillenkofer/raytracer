@@ -44,11 +44,12 @@ set(SOURCE_FILES
         src/main.c
         src/utils/vec3.c
         src/utils/angle.c
+		src/utils/random.c
         src/camera.c
         src/triangle.c
         src/utils/image.c
         src/scene.c
-        src/raytracer.c src/utils/random.c)
+        src/raytracer.c)
 
 set(HEADER_FILES
         src/utils/vec3.h

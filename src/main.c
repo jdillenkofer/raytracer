@@ -6,6 +6,7 @@
 #include "raytracer.h"
 
 #include <omp.h>
+#include <utils/random.h>
 
 int main(int argc, char* argv[]) {
     (void) argc;
@@ -15,7 +16,7 @@ int main(int argc, char* argv[]) {
     uint32_t width = 1920;
     uint32_t height = 1080;
     double FOV = 110.0f;
-	uint32_t raysPerPixel = 1;
+	uint32_t raysPerPixel = 64;
     Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
     Image* image = image_create(width, height);
 
@@ -63,19 +64,50 @@ int main(int argc, char* argv[]) {
     scene.pointLightCount = 2;
     scene.pointLights = pointLights;
 
-	double rayColorContribution = 1.0f / raysPerPixel;
+	double rayColorContribution = 1.0f / (double) raysPerPixel;
+
+	double pixelWidth = 1.0f / (double) width;
+    double pixelHeight = 1.0f / (double) height;
+    double rootTerm = sqrt(pixelWidth/pixelHeight * raysPerPixel + pow(pixelWidth - pixelHeight, 2) / 4 * pow(pixelHeight, 2));
+    uint32_t raysPerWidthPixel = 1;
+    uint32_t raysPerHeightPixel = 1;
+    double deltaX = pixelWidth;
+    double deltaY = pixelHeight;
+    if (raysPerPixel > 1) {
+        raysPerWidthPixel = (uint32_t) (rootTerm - (pixelWidth - pixelHeight / 2 * pixelHeight));
+        raysPerHeightPixel = (uint32_t) (raysPerPixel / raysPerWidthPixel);
+        deltaX = pixelWidth / (raysPerWidthPixel - 1);
+        deltaY = pixelHeight / (raysPerHeightPixel - 1);
+    }
+
 
     for (uint32_t y = 0; y < height; y++) {
+        double PosY = -1.0f + 2.0f * ((double)y / (camera->height));
 #ifndef _WINDOWS
         #pragma omp parallel for
 #endif
         for (uint32_t x = 0; x < width; x++) {
+            double PosX = -1.0f + 2.0f * ((double)x / (camera->width));
+
 			Vec3 color = {0};
-			for (uint32_t i = 0; i < raysPerPixel; i++) {
-				Ray ray = camera_rayFromPixelPos(camera, x, y);
-				Vec3 currentRayColor = raytracer_raycast(&scene, &ray);
-				color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
-			}
+            for (uint32_t j = 0; j < raysPerHeightPixel; j++) {
+                for (uint32_t i = 0; i < raysPerWidthPixel; i++) {
+                    Vec3 OffsetY = vec3_mul(camera->y,
+                                            (PosY - pixelWidth + (j + 1) * deltaY)*camera->renderTargetHeight/2.0f);
+                    Vec3 OffsetX = vec3_mul(camera->x,
+                                            (PosX - pixelHeight + (i + 1) * deltaX)*camera->renderTargetWidth/2.0f);
+                    Vec3 renderTargetPos = vec3_add(vec3_add(camera->renderTargetCenter,
+                                                             OffsetX),
+                                                    OffsetY);
+                    Ray ray = {
+                            camera->position,
+                            vec3_norm(vec3_sub(renderTargetPos, camera->position))
+                    };
+
+                    Vec3 currentRayColor = raytracer_raycast(&scene, &ray);
+                    color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
+                }
+            }
 
             // currently values are clamped to [0,1]
             // in the future we may return doubles > 1.0

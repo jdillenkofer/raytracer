@@ -39,23 +39,8 @@ Camera* camera_create(Vec3 position, Vec3 lookAt, uint32_t width, uint32_t heigh
     camera->aspectRatio = (double) width/ (double)height;
     camera->lookAt = lookAt;
     camera->FOV = FOV;
-	camera->halfPixelWidth = 0.5f / width;
-	camera->halfPixelHeight = 0.5f / height;
     camera_setup(camera);
     return camera;
-}
-
-Ray camera_rayFromPixelPos(Camera *camera, uint32_t x, uint32_t y) {
-	double PosY = -1.0f + 2.0f * ((double)y / (double)camera->height) + random_bilateral() * camera->halfPixelHeight;
-	double PosX = -1.0f + 2.0f * ((double)x / (double)camera->width) + random_bilateral() * camera->halfPixelWidth;
-    Vec3 renderTargetPos = vec3_add(vec3_add(camera->renderTargetCenter,
-            vec3_mul(camera->x, PosX*camera->renderTargetWidth/2.0f)),
-            vec3_mul(camera->y, PosY*camera->renderTargetHeight/2.0f));
-    Ray outgoingRay = {
-        camera->position,
-        vec3_norm(vec3_sub(renderTargetPos, camera->position))
-    };
-    return outgoingRay;
 }
 
 void camera_destroy(Camera* cam) {
