@@ -8,8 +8,11 @@
 #include "plane.h"
 #include "sphere.h"
 #include "triangle.h"
+#include "camera.h"
 
 typedef struct {
+    Camera* camera;
+
     uint32_t materialCount;
     Material *materials;
 

@@ -11,7 +11,7 @@ static void camera_setup(Camera *camera) {
     //
     camera->z = vec3_norm(vec3_sub(camera->position, camera->lookAt));
     camera->x = vec3_norm(vec3_cross((Vec3) { 0, 0, -1 }, camera->z));
-    camera->y = vec3_cross(camera->z, camera->x);
+    camera->y = vec3_norm(vec3_cross(camera->z, camera->x));
 
     camera->renderTargetWidth = 1.0f;
     camera->renderTargetHeight = 1.0f;

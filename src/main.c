@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
     triangles[0].materialIndex = 2;
     triangles[0].v0 = (Vec3) { -1.0f, 5.0f, 0.0f };
     triangles[0].v1 = (Vec3) { 1.0f, 5.0f, 0.0f };
-    triangles[0].v2 = (Vec3) { 0.0f, 5.0f, 1.0f };
+    triangles[0].v2 = (Vec3) { 0.0f, 10.0f, 1.0f };
 
     PointLight pointLights[2] = {0};
     pointLights[0].position = (Vec3) { 0.0f, 100.0f, 40.0f };
@@ -58,6 +58,7 @@ int main(int argc, char* argv[]) {
     pointLights[0].strength = 20000.0f;
 
     Scene scene = {0};
+    scene.camera = camera;
     scene.materialCount = 5;
     scene.materials = materials;
     scene.planeCount = 2;
@@ -103,9 +104,7 @@ int main(int argc, char* argv[]) {
                                             (PosY - pixelWidth + (j + 1) * deltaY)*camera->renderTargetHeight/2.0f);
                     Vec3 OffsetX = vec3_mul(camera->x,
                                             (PosX - pixelHeight + (i + 1) * deltaX)*camera->renderTargetWidth/2.0f);
-                    Vec3 renderTargetPos = vec3_add(vec3_add(camera->renderTargetCenter,
-                                                             OffsetX),
-                                                    OffsetY);
+                    Vec3 renderTargetPos = vec3_add(vec3_add(camera->renderTargetCenter, OffsetX), OffsetY);
                     Ray ray = {
                             camera->position,
                             vec3_norm(vec3_sub(renderTargetPos, camera->position))

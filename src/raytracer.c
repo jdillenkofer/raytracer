@@ -55,51 +55,47 @@ static bool raytracer_intersectSphere(Sphere* sphere, Ray* ray, double* hitDista
 }
 
 static bool raytracer_intersectTriangle(Triangle* triangle, Ray* ray, double* hitDistance, Vec3* intersectionNormal) {
-    Vec3 v0 = vec3_sub(ray->origin, triangle->v0);
-    Vec3 v1 = vec3_sub(ray->origin, triangle->v1);
-    Vec3 v2 = vec3_sub(ray->origin, triangle->v2);
-
-    Vec3 v0v1 = vec3_sub(v1, v0);
-    Vec3 v0v2 = vec3_sub(v2, v0);
-    Vec3 normal = vec3_cross(v0v1, v0v2);
+    Vec3 v0v1 = vec3_sub(triangle->v1, triangle->v0);
+    Vec3 v0v2 = vec3_sub(triangle->v2, triangle->v0);
+    Vec3 normal = vec3_norm(vec3_cross(v0v1, v0v2));
     double normalDotRayDir = vec3_dot(normal, ray->direction);
     if (fabs(normalDotRayDir) < EPSILON) {
         return false;
     }
 
-    double d = vec3_dot(normal, v0);
+    double d = vec3_dot(normal, vec3_sub(ray->origin, triangle->v0));
 
-    double cosAngle = vec3_dot(normal, vec3_sub(ray->origin, ray->origin));
-    double t = - (cosAngle + d) / normalDotRayDir;
+    // double cosAngle = vec3_dot(normal, (Vec3) {0, 1, 0});
+    // double t = -(cosAngle + d) / normalDotRayDir;
+    double t = -(d) / normalDotRayDir;
     if (t > 0) {
         Vec3 hitPoint = vec3_add(ray->origin, vec3_mul(ray->direction, t));
 
         // difference to the plane test
         Vec3 c;
 
-        Vec3 edge0 = vec3_sub(v1, v0);
-        Vec3 vp0 = vec3_sub(hitPoint, v0);
+        Vec3 edge0 = vec3_sub(triangle->v1, triangle->v0);
+        Vec3 vp0 = vec3_sub(hitPoint, triangle->v0);
         c = vec3_cross(edge0, vp0);
         if (vec3_dot(normal, c) < 0) {
             return false;
         }
 
-        Vec3 edge1 = vec3_sub(v2, v1);
-        Vec3 vp1 = vec3_sub(hitPoint, v1);
+        Vec3 edge1 = vec3_sub(triangle->v2, triangle->v1);
+        Vec3 vp1 = vec3_sub(hitPoint, triangle->v1);
         c = vec3_cross(edge1, vp1);
         if (vec3_dot(normal, c) < 0) {
             return false;
         }
 
-        Vec3 edge2 = vec3_sub(v0, v2);
-        Vec3 vp2 = vec3_sub(hitPoint, v2);
+        Vec3 edge2 = vec3_sub(triangle->v0, triangle->v2);
+        Vec3 vp2 = vec3_sub(hitPoint, triangle->v2);
         c = vec3_cross(edge2, vp2);
         if (vec3_dot(normal, c) < 0) {
             return false;
         }
 
-        *intersectionNormal = cosAngle > 0 ?
-                              normal : vec3_mul(normal, -1);
+        *intersectionNormal = normal;
         *hitDistance = t;
         return true;
     }
@@ -184,14 +180,19 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay) {
 
             uint32_t shadowRayHitMaterialIndex = 0;
             double closestHitDistance = DBL_MAX;
-            raytracer_calcClosestPlaneIntersect(scene, &shadowRay, &closestHitDistance, &intersectionNormal, &shadowRayHitMaterialIndex);
-            raytracer_calcClosestSphereIntersect(scene, &shadowRay, &closestHitDistance, &intersectionNormal, &shadowRayHitMaterialIndex);
-            raytracer_calcClosestTriangleIntersect(scene, &shadowRay, &closestHitDistance, &intersectionNormal, &shadowRayHitMaterialIndex);
+            Vec3 shadowRayIntersectionNormal = {0, 0, 0};
+            raytracer_calcClosestPlaneIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
+            raytracer_calcClosestSphereIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
+            raytracer_calcClosestTriangleIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
             if (distanceToLight < closestHitDistance) {
                 // we hit the light
                 double cosAngle = vec3_dot(shadowRay.direction, intersectionNormal);
                 cosAngle = math_clamp(cosAngle, 0.0f, 1.0f);
-                outColor = vec3_add(outColor, vec3_mul(pointLight.emissionColor, cosAngle * (pointLight.strength/(distanceToLight * distanceToLight))));
+
+                double lightStrength = (pointLight.strength/(distanceToLight * distanceToLight));
+                Vec3 diffuseLighting = vec3_mul(pointLight.emissionColor, cosAngle * lightStrength);
+
+                outColor = vec3_add(outColor, diffuseLighting);
             }
         }
         outColor = vec3_hadamard(outColor, hitMaterial.color);
