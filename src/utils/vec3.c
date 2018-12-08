@@ -1,4 +1,5 @@
 #include "vec3.h"
+#include "utils/math.h"
 
 Vec3 vec3_add(Vec3 a, Vec3 b) {
     ASSERT_VECTOR_VALUE_NOT_NAN(a);
@@ -35,26 +36,11 @@ Vec3 vec3_cross(Vec3 a, Vec3 b) {
     return result;
 }
 
-Vec3 vec3_clamp(Vec3 a) {
+Vec3 vec3_clamp(Vec3 a, double min, double max) {
     ASSERT_VECTOR_VALUE_NOT_NAN(a);
-    if (a.r > 1.0f) {
-        a.r = 1.0f;
-    }
-    if (a.g > 1.0f) {
-        a.g = 1.0f;
-    }
-    if (a.b > 1.0f) {
-        a.b = 1.0f;
-    }
-    if (a.r < 0.0f) {
-        a.r = 0.0f;
-    }
-    if (a.g < 0.0f) {
-        a.g = 0.0f;
-    }
-    if (a.b < 0.0f) {
-        a.b = 0.0f;
-    }
+    a.r = math_clamp(a.r, min, max);
+    a.g = math_clamp(a.g, min, max);
+    a.b = math_clamp(a.b, min, max);
     return a;
 }
 

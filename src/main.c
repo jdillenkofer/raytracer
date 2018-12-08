@@ -32,8 +32,8 @@ int main(int argc, char* argv[]) {
     planes[0].normal = (Vec3) { 0.0f, 0.0f, 1.0f };
     planes[0].distanceFromOrigin = 0;
     planes[1].materialIndex = 1;
-    planes[1].normal = (Vec3) { 0.0f, -1.0f, 0.0f };
-    planes[1].distanceFromOrigin = -4;
+    planes[1].normal = (Vec3) { 0.0f, 1.0f, 0.0f };
+    planes[1].distanceFromOrigin = 4;
 
     Sphere spheres[3] = {0};
     spheres[0].materialIndex = 2;
@@ -47,10 +47,9 @@ int main(int argc, char* argv[]) {
     spheres[2].radius = 1;
 
     PointLight pointLights[2] = {0};
-    pointLights[0].position = (Vec3) { 0.0f, 4.0f, 5.f };
+    pointLights[0].position = (Vec3) { 0.0f, 100.0f, 40.0f };
     pointLights[0].emissionColor = (Vec3) { 0.5f, 0.5f, 0.5f };
-    pointLights[1].position = (Vec3) { 0.0f, -4.0f, 5.f };
-    pointLights[1].emissionColor = (Vec3) { 0.5f, 0.5f, 0.5f };
+    pointLights[0].strength = 20000.0f;
 
     Scene scene = {0};
     scene.materialCount = 5;
@@ -61,7 +60,7 @@ int main(int argc, char* argv[]) {
     scene.spheres = spheres;
     scene.triangleCount = 0;
     scene.triangles = NULL;
-    scene.pointLightCount = 2;
+    scene.pointLightCount = 1;
     scene.pointLights = pointLights;
 
 	double rayColorContribution = 1.0f / (double) raysPerPixel;
@@ -114,7 +113,7 @@ int main(int argc, char* argv[]) {
             // and use hdr to map it back to the [0.0, 1.0] range after
             // all pixels are calculated
             // this would avoid that really bright areas look the "same"
-            color = vec3_clamp(color);
+            color = vec3_clamp(color, 0.0f, 1.0f);
 
 			image->buffer[y*width + x] =
 				(0xFFu << 24) |

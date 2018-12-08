@@ -3,7 +3,9 @@
 #include <float.h>
 #include <stdbool.h>
 
-static bool raytracer_intersectPlane(Plane *plane, Ray *ray, double *hitDistance) {
+#include "utils/math.h"
+
+static bool raytracer_intersectPlane(Plane *plane, Ray *ray, double *hitDistance, Vec3* intersectionNormal) {
         // We use the "Hesse normal form":
         //     normal * p - distanceFromOrigin = 0
         // to describe our planes
@@ -12,6 +14,7 @@ static bool raytracer_intersectPlane(Plane *plane, Ray *ray, double *hitDistance
             double t = (-plane->distanceFromOrigin - vec3_dot(plane->normal, ray->origin)) / denominator;
             // only hit objects in front of us
             if (t > 0) {
+                *intersectionNormal = plane->normal;
                 *hitDistance = t;
                 return true;
             }
@@ -19,7 +22,7 @@ static bool raytracer_intersectPlane(Plane *plane, Ray *ray, double *hitDistance
         return false;
 }
 
-static bool raytracer_intersectSphere(Sphere *sphere, Ray *ray, double *hitDistance) {
+static bool raytracer_intersectSphere(Sphere *sphere, Ray *ray, double *hitDistance, Vec3* intersectionNormal) {
         Vec3 sphereRelativeOrigin = vec3_sub(ray->origin, sphere->position);
 
         // Mitternachtsformel
@@ -40,6 +43,8 @@ static bool raytracer_intersectSphere(Sphere *sphere, Ray *ray, double *hitDista
                 t = tneg;
             }
             if (t > 0) {
+                Vec3 hitPoint = vec3_add(ray->origin, vec3_mul(ray->direction, t));
+                *intersectionNormal = vec3_norm(vec3_sub(hitPoint, sphere->position));
                 *hitDistance = t;
                 return true;
             }
@@ -47,13 +52,15 @@ static bool raytracer_intersectSphere(Sphere *sphere, Ray *ray, double *hitDista
 		return false;
 }
 
-static void raytracer_calcClosestPlaneIntersect(Scene *scene, Ray *ray, double *minHitDistance,
+static void raytracer_calcClosestPlaneIntersect(Scene *scene, Ray *ray, double *minHitDistance, Vec3* intersectionNormal,
                                                 uint32_t *hitMaterialIndex) {
     for (uint32_t i = 0; i < scene->planeCount; i++) {
         Plane* plane = &scene->planes[i];
         double planeHitDistance = DBL_MAX;
-        if (raytracer_intersectPlane(plane, ray, &planeHitDistance)) {
+        Vec3 planeIntersectionNormal = {0, 0, 0};
+        if (raytracer_intersectPlane(plane, ray, &planeHitDistance, &planeIntersectionNormal)) {
             if (planeHitDistance < *minHitDistance) {
+                *intersectionNormal = planeIntersectionNormal;
                 *minHitDistance = planeHitDistance;
                 *hitMaterialIndex = plane->materialIndex;
             }
@@ -61,13 +68,15 @@ static void raytracer_calcClosestPlaneIntersect(Scene *scene, Ray *ray, double *
     }
 }
 
-static void raytracer_calcClosestSphereIntersect(Scene *scene, Ray *ray, double *minHitDistance,
+static void raytracer_calcClosestSphereIntersect(Scene *scene, Ray *ray, double *minHitDistance, Vec3* intersectionNormal,
                                                  uint32_t *hitMaterialIndex) {
     for (uint32_t i = 0; i < scene->sphereCount; i++) {
         Sphere* sphere = &scene->spheres[i];
         double sphereHitDistance = DBL_MAX;
-        if (raytracer_intersectSphere(sphere, ray, &sphereHitDistance)) {
+        Vec3 sphereIntersectionNormal = {0.0f, 0.0f, 0.0f};
+        if (raytracer_intersectSphere(sphere, ray, &sphereHitDistance, &sphereIntersectionNormal)) {
             if (sphereHitDistance < *minHitDistance) {
+                *intersectionNormal = sphereIntersectionNormal;
                 *minHitDistance = sphereHitDistance;
                 *hitMaterialIndex = sphere->materialIndex;
             }
@@ -81,8 +90,10 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay) {
     double minHitDistance = DBL_MAX;
     uint32_t hitMaterialIndex = 0;
 
-    raytracer_calcClosestPlaneIntersect(scene, primaryRay, &minHitDistance, &hitMaterialIndex);
-    raytracer_calcClosestSphereIntersect(scene, primaryRay, &minHitDistance, &hitMaterialIndex);
+    Vec3 intersectionNormal = {0, 0, 0};
+
+    raytracer_calcClosestPlaneIntersect(scene, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex);
+    raytracer_calcClosestSphereIntersect(scene, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex);
 
     // if we got a hit calculate the hitPoint and send a shadow rays to each lightsource
     if (hitMaterialIndex) {
@@ -102,11 +113,13 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay) {
 
             uint32_t shadowRayHitMaterialIndex = 0;
             double closestHitDistance = DBL_MAX;
-            raytracer_calcClosestPlaneIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayHitMaterialIndex);
-            raytracer_calcClosestSphereIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayHitMaterialIndex);
+            raytracer_calcClosestPlaneIntersect(scene, &shadowRay, &closestHitDistance, &intersectionNormal, &shadowRayHitMaterialIndex);
+            raytracer_calcClosestSphereIntersect(scene, &shadowRay, &closestHitDistance, &intersectionNormal, &shadowRayHitMaterialIndex);
             if (distanceToLight < closestHitDistance) {
                 // we hit the light
-                outColor = vec3_add(outColor, pointLight.emissionColor);
+                double cosAngle = vec3_dot(shadowRay.direction, intersectionNormal);
+                cosAngle = math_clamp(cosAngle, 0.0f, 1.0f);
+                outColor = vec3_add(outColor, vec3_mul(pointLight.emissionColor, cosAngle * (pointLight.strength/(distanceToLight * distanceToLight))));
             }
         }
         outColor = vec3_hadamard(outColor, hitMaterial.color);

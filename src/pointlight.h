@@ -6,6 +6,7 @@
 typedef struct {
     Vec3 position;
     Vec3 emissionColor;
+    double strength;
 } PointLight;
 
 #endif //RAYTRACER_POINTLIGHT_H
