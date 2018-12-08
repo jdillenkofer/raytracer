@@ -11,10 +11,11 @@ static bool raytracer_intersectPlane(Plane *plane, Ray *ray, double *hitDistance
         // to describe our planes
         double denominator = vec3_dot(plane->normal, ray->direction);
         if ((denominator < -EPSILON) || (denominator > EPSILON)) {
-            double t = (-plane->distanceFromOrigin - vec3_dot(plane->normal, ray->origin)) / denominator;
+            double cosAngle = vec3_dot(plane->normal, ray->origin);
+            double t = (-plane->distanceFromOrigin - cosAngle) / denominator;
             // only hit objects in front of us
             if (t > 0) {
-                *intersectionNormal = vec3_dot(plane->normal, ray->origin) > 0 ?
+                *intersectionNormal = cosAngle > 0 ?
                         plane->normal : vec3_mul(plane->normal, -1);
                 *hitDistance = t;
                 return true;
