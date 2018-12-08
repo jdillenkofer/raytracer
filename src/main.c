@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
     uint32_t width = 1920;
     uint32_t height = 1080;
     double FOV = 110.0f;
-	uint32_t raysPerPixel = 64;
+	uint32_t raysPerPixel = 1;
     Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
     Image* image = image_create(width, height);
 
@@ -46,6 +46,12 @@ int main(int argc, char* argv[]) {
     spheres[2].position = (Vec3) { 3.0f, 0.0f, 2.0f };
     spheres[2].radius = 1;
 
+    Triangle triangles[1] = {0};
+    triangles[0].materialIndex = 2;
+    triangles[0].v0 = (Vec3) { -1.0f, 5.0f, 0.0f };
+    triangles[0].v1 = (Vec3) { 1.0f, 5.0f, 0.0f };
+    triangles[0].v2 = (Vec3) { 0.0f, 5.0f, 1.0f };
+
     PointLight pointLights[2] = {0};
     pointLights[0].position = (Vec3) { 0.0f, 100.0f, 40.0f };
     pointLights[0].emissionColor = (Vec3) { 0.5f, 0.5f, 0.5f };
@@ -58,8 +64,8 @@ int main(int argc, char* argv[]) {
     scene.planes = planes;
     scene.sphereCount = 3;
     scene.spheres = spheres;
-    scene.triangleCount = 0;
-    scene.triangles = NULL;
+    scene.triangleCount = 1;
+    scene.triangles = triangles;
     scene.pointLightCount = 1;
     scene.pointLights = pointLights;
 
@@ -82,8 +88,10 @@ int main(int argc, char* argv[]) {
 
     for (uint32_t y = 0; y < height; y++) {
         double PosY = -1.0f + 2.0f * ((double)y / (camera->height));
-#ifndef _WINDOWS
-        #pragma omp parallel for
+#ifdef OPENMP
+    #ifndef _WINDOWS
+            #pragma omp parallel for
+    #endif
 #endif
         for (uint32_t x = 0; x < width; x++) {
             double PosX = -1.0f + 2.0f * ((double)x / (camera->width));
