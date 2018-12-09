@@ -192,7 +192,15 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay) {
                 double lightStrength = (pointLight.strength/(distanceToLight * distanceToLight));
                 Vec3 diffuseLighting = vec3_mul(pointLight.emissionColor, cosAngle * lightStrength);
 
-                outColor = vec3_add(outColor, diffuseLighting);
+                Vec3 toView = vec3_norm(vec3_sub(scene->camera->position, hitPoint));
+                Vec3 toLight = vec3_mul(shadowRay.direction, -1);
+                Vec3 reflectionVector = vec3_norm(vec3_sub(vec3_mul(intersectionNormal, 2.0f * vec3_dot(intersectionNormal, toLight)), toLight));
+                cosAngle = vec3_dot(toView, reflectionVector);
+                cosAngle = pow(cosAngle, 64);
+
+                Vec3 specularLighting = vec3_mul(pointLight.emissionColor, cosAngle * lightStrength);
+
+                outColor = vec3_add(outColor, vec3_add(diffuseLighting, specularLighting));
             }
         }
         outColor = vec3_hadamard(outColor, hitMaterial.color);

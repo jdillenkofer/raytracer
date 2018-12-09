@@ -50,9 +50,9 @@ int main(int argc, char* argv[]) {
     triangles[0].materialIndex = 2;
     triangles[0].v0 = (Vec3) { -1.0f, 5.0f, 0.0f };
     triangles[0].v1 = (Vec3) { 1.0f, 5.0f, 0.0f };
-    triangles[0].v2 = (Vec3) { 0.0f, 10.0f, 1.0f };
+    triangles[0].v2 = (Vec3) { 0.0f, 5.0f, 1.0f };
 
-    PointLight pointLights[2] = {0};
+    PointLight pointLights[1] = {0};
     pointLights[0].position = (Vec3) { 0.0f, 100.0f, 40.0f };
     pointLights[0].emissionColor = (Vec3) { 0.5f, 0.5f, 0.5f };
     pointLights[0].strength = 20000.0f;
