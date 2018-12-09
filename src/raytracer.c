@@ -65,9 +65,7 @@ static bool raytracer_intersectTriangle(Triangle* triangle, Ray* ray, double* hi
 
     double d = vec3_dot(normal, vec3_sub(ray->origin, triangle->v0));
 
-    // double cosAngle = vec3_dot(normal, (Vec3) {0, 1, 0});
-    // double t = -(cosAngle + d) / normalDotRayDir;
-    double t = -(d) / normalDotRayDir;
+	double t = -(d) / normalDotRayDir;
     if (t > 0) {
         Vec3 hitPoint = vec3_add(ray->origin, vec3_mul(ray->direction, t));
 
@@ -95,7 +93,9 @@ static bool raytracer_intersectTriangle(Triangle* triangle, Ray* ray, double* hi
             return false;
         }
 
-        *intersectionNormal = normal;
+		double cosAngle = vec3_dot(normal, ray->origin);
+        *intersectionNormal = cosAngle > 0 ?
+			normal : vec3_mul(normal, -1);
         *hitDistance = t;
         return true;
     }
@@ -150,7 +150,7 @@ static void raytracer_calcClosestTriangleIntersect(Scene* scene, Ray* ray, doubl
     }
 }
 
-Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay) {
+Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, uint32_t maxRecursionDepth) {
     Vec3 outColor = (Vec3) { 0.0f, 0.0f, 0.0f };
 
     double minHitDistance = DBL_MAX;
@@ -162,16 +162,60 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay) {
     raytracer_calcClosestSphereIntersect(scene, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex);
     raytracer_calcClosestTriangleIntersect(scene, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex);
 
-    // if we got a hit calculate the hitPoint and send a shadow rays to each lightsource
     if (hitMaterialIndex) {
 
-        Material hitMaterial = scene->materials[hitMaterialIndex];
+        Material* hitMaterial = &scene->materials[hitMaterialIndex];
 
-        Vec3 hitPoint = vec3_add(primaryRay->origin, vec3_mul(primaryRay->direction, minHitDistance));
+		// if we got a hit, calculate the hitPoint and send a shadow rays to each lightsource
+		Vec3 hitPoint = vec3_add(primaryRay->origin, vec3_mul(primaryRay->direction, minHitDistance));
+
+		if (hitMaterial->reflactionIndex > 0 && recursionDepth <= maxRecursionDepth) {
+			Ray reflectedRay;
+			Vec3 reversedDirection = vec3_mul(primaryRay->direction, -1);
+			reflectedRay.direction = vec3_norm(vec3_sub(vec3_mul(intersectionNormal, 2.0f * vec3_dot(intersectionNormal, reversedDirection)), reversedDirection));
+			reflectedRay.origin = vec3_add(hitPoint, vec3_mul(reflectedRay.direction, 1.0f / 1000.0f));
+
+			Vec3 reflectionColor = raytracer_raycast(scene, &reflectedRay, recursionDepth + 1, maxRecursionDepth);
+
+			outColor = vec3_add(outColor, vec3_mul(reflectionColor, hitMaterial->reflactionIndex));
+		}
+
+		if (hitMaterial->refractionIndex > 0 && recursionDepth <= maxRecursionDepth) {
+			
+			double cosi = math_clamp(-1, 1, vec3_dot(hitPoint, intersectionNormal));
+			// refractionIndex of air is ~ 1
+			double etai = 1; double etat = hitMaterial->refractionIndex;
+			Vec3 n = intersectionNormal;
+			if (cosi < 0) {
+				cosi = -cosi;
+			} else {
+				double tmp = etai;
+				etai = etat;
+				etat = tmp;
+				n = vec3_mul(n, -1);
+			}
+			double eta = etai / etat;
+			double k = 1 - eta * eta * (1 - cosi * cosi);
+			
+			Vec3 refractedDir;
+			if (k < 0) {
+				refractedDir = (Vec3) { 0, 0, 0 };
+			} else {
+				refractedDir = vec3_norm(vec3_add(vec3_mul(hitPoint, eta), vec3_mul(n, eta * cosi - sqrt(k))));
+			}
+			
+			Ray refractedRay;
+			refractedRay.direction = refractedDir;
+			refractedRay.origin = vec3_add(hitPoint, vec3_mul(refractedDir, 1.0f / 1000.0f));
+			Vec3 refractionColor = raytracer_raycast(scene, &refractedRay, recursionDepth + 1, maxRecursionDepth);
+
+			outColor = vec3_add(outColor, vec3_mul(refractionColor, hitMaterial->refractionIndex));
+		}
+
         for (uint32_t i = 0; i < scene->pointLightCount; i++) {
-            PointLight pointLight = scene->pointLights[i];
+            PointLight* pointLight = &scene->pointLights[i];
             Ray shadowRay = {0};
-            shadowRay.direction = vec3_sub(pointLight.position, hitPoint);
+            shadowRay.direction = vec3_sub(pointLight->position, hitPoint);
             double distanceToLight = vec3_length(shadowRay.direction);
             shadowRay.direction = vec3_norm(shadowRay.direction);
             // move the ray origin slightly forward to prevent self intersection
@@ -189,8 +233,8 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay) {
                 double cosAngle = vec3_dot(shadowRay.direction, intersectionNormal);
                 cosAngle = math_clamp(cosAngle, 0.0f, 1.0f);
 
-                double lightStrength = (pointLight.strength/(distanceToLight * distanceToLight));
-                Vec3 diffuseLighting = vec3_mul(pointLight.emissionColor, cosAngle * lightStrength);
+                double lightStrength = (pointLight->strength/(distanceToLight * distanceToLight));
+                Vec3 diffuseLighting = vec3_mul(pointLight->emissionColor, cosAngle * lightStrength);
 
                 Vec3 toView = vec3_norm(vec3_sub(scene->camera->position, hitPoint));
                 Vec3 toLight = vec3_mul(shadowRay.direction, -1);
@@ -198,12 +242,12 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay) {
                 cosAngle = vec3_dot(toView, reflectionVector);
                 cosAngle = pow(cosAngle, 64);
 
-                Vec3 specularLighting = vec3_mul(pointLight.emissionColor, cosAngle * lightStrength);
+                Vec3 specularLighting = vec3_mul(pointLight->emissionColor, cosAngle * lightStrength);
 
-                outColor = vec3_add(outColor, vec3_add(diffuseLighting, specularLighting));
+                outColor = vec3_add(outColor, vec3_mul(vec3_add(diffuseLighting, specularLighting), 1-hitMaterial->reflactionIndex));
             }
         }
-        outColor = vec3_hadamard(outColor, hitMaterial.color);
+        outColor = vec3_hadamard(outColor, hitMaterial->color);
     }
     return outColor;
 }

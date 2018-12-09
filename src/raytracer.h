@@ -7,6 +7,6 @@
 
 #define EPSILON 0.00001f
 
-Vec3 raytracer_raycast(Scene *scene, Ray *primaryRay);
+Vec3 raytracer_raycast(Scene *scene, Ray *primaryRay, uint32_t recursionDepth, uint32_t maxRecursionDepth);
 
 #endif //RAYTRACER_RAYTRACER_H

@@ -17,23 +17,47 @@ int main(int argc, char* argv[]) {
     uint32_t height = 1080;
     double FOV = 110.0f;
 	uint32_t raysPerPixel = 1;
+	uint32_t maxRecursionDepth = 10;
     Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
     Image* image = image_create(width, height);
 
     Material materials[5] = {0};
     materials[0].color = (Vec3) { 0.0f, 0.0f, 0.0f };
-    materials[1].color = (Vec3) { 0.4f, 0.4f, 0.4f };
-    materials[2].color = (Vec3) { 1.0f, 0.0f, 0.0f };
-    materials[3].color = (Vec3) { 0.0f, 1.0f, 0.0f };
-    materials[4].color = (Vec3) { 0.0f, 0.0f, 1.0f };
+	materials[0].reflactionIndex = 0.0f;
+	materials[0].refractionIndex = 0.0f;
+    
+	materials[1].color = (Vec3) { 0.4f, 0.4f, 0.4f };
+	materials[1].reflactionIndex = 0.4f;
+	materials[1].refractionIndex = 0.0f;
 
-    Plane planes[2] = {0};
+    materials[2].color = (Vec3) { 1.0f, 0.0f, 0.0f };
+	materials[2].reflactionIndex = 1.0f;
+	materials[2].refractionIndex = 0.0f;
+
+    materials[3].color = (Vec3) { 1.0f, 1.0f, 1.0f };
+	materials[3].reflactionIndex = 1.0f;
+	materials[3].refractionIndex = 0.0f;
+
+    materials[4].color = (Vec3) { 0.0f, 0.0f, 1.0f };
+	materials[4].reflactionIndex = 0.5f;
+	materials[4].refractionIndex = 0.0f;
+
+    Plane planes[5] = {0};
     planes[0].materialIndex = 1;
     planes[0].normal = (Vec3) { 0.0f, 0.0f, 1.0f };
     planes[0].distanceFromOrigin = 0;
     planes[1].materialIndex = 1;
     planes[1].normal = (Vec3) { 0.0f, 1.0f, 0.0f };
-    planes[1].distanceFromOrigin = 4;
+    planes[1].distanceFromOrigin = 8;
+	planes[2].materialIndex = 1;
+	planes[2].normal = (Vec3) { 0.0f, 1.0f, 0.0f };
+	planes[2].distanceFromOrigin = 40;
+	planes[3].materialIndex = 1;
+	planes[3].normal = (Vec3) { 1.0f, 0.0f, 0.0f };
+	planes[3].distanceFromOrigin = -8;
+	planes[4].materialIndex = 1;
+	planes[4].normal = (Vec3) { 1.0f, 0.0f, 0.0f };
+	planes[4].distanceFromOrigin = 8;
 
     Sphere spheres[3] = {0};
     spheres[0].materialIndex = 2;
@@ -53,15 +77,15 @@ int main(int argc, char* argv[]) {
     triangles[0].v2 = (Vec3) { 0.0f, 5.0f, 1.0f };
 
     PointLight pointLights[1] = {0};
-    pointLights[0].position = (Vec3) { 0.0f, 100.0f, 40.0f };
-    pointLights[0].emissionColor = (Vec3) { 0.5f, 0.5f, 0.5f };
-    pointLights[0].strength = 20000.0f;
+    pointLights[0].position = (Vec3) { 0.0f, 30.0f, 40.0f };
+    pointLights[0].emissionColor = (Vec3) { 1.0f, 1.0f, 1.0f };
+    pointLights[0].strength = 1500.0f;
 
     Scene scene = {0};
     scene.camera = camera;
     scene.materialCount = 5;
     scene.materials = materials;
-    scene.planeCount = 2;
+    scene.planeCount = 5;
     scene.planes = planes;
     scene.sphereCount = 3;
     scene.spheres = spheres;
@@ -110,7 +134,7 @@ int main(int argc, char* argv[]) {
                             vec3_norm(vec3_sub(renderTargetPos, camera->position))
                     };
 
-                    Vec3 currentRayColor = raytracer_raycast(&scene, &ray);
+                    Vec3 currentRayColor = raytracer_raycast(&scene, &ray, 0, maxRecursionDepth);
                     color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
                 }
             }
