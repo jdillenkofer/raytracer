@@ -9,7 +9,7 @@
 #include <omp.h>
 #include <utils/random.h>
 
-void handleInput() {
+void handleEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         switch(event.type) {
@@ -22,10 +22,10 @@ void handleInput() {
     }
 }
 
-void render(SDL_Renderer* renderer, Image* image) {
+void renderImage(SDL_Renderer *renderer, Image *image) {
     SDL_Surface* surface =
             SDL_CreateRGBSurfaceFrom((void*)image->buffer, (int) image->width, (int) image->height, 32,
-                                     (int) sizeof(uint32_t) * image->width, 0xFF << 16, 0xFF << 8, 0xFF, 0xFF << 24);
+                                     (int) (sizeof(uint32_t) * image->width), 0xFF << 16, 0xFF << 8, 0xFF, 0xFF << 24);
     SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
     SDL_FreeSurface(surface);
     SDL_RenderClear(renderer);
@@ -42,30 +42,30 @@ int main(int argc, char* argv[]) {
     uint32_t width = 1920;
     uint32_t height = 1080;
     double FOV = 110.0f;
-	uint32_t raysPerPixel = 16;
-	uint32_t maxRecursionDepth = 5;
+	uint32_t raysPerPixel = 32;
+	uint32_t maxRecursionDepth = 10;
     Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
     Image* image = image_create(width, height);
 
     Material materials[5] = {0};
     materials[0].color = (Vec3) { 0.0f, 0.0f, 0.0f };
-	materials[0].reflactionIndex = 0.0f;
+	materials[0].reflectionIndex = 0.0f;
 	materials[0].refractionIndex = 0.0f;
     
 	materials[1].color = (Vec3) { 0.4f, 0.4f, 0.4f };
-	materials[1].reflactionIndex = 0.4f;
+	materials[1].reflectionIndex = 0.4f;
 	materials[1].refractionIndex = 0.0f;
 
     materials[2].color = (Vec3) { 1.0f, 0.0f, 0.0f };
-	materials[2].reflactionIndex = 1.0f;
+	materials[2].reflectionIndex = 1.0f;
 	materials[2].refractionIndex = 0.0f;
 
     materials[3].color = (Vec3) { 1.0f, 1.0f, 1.0f };
-	materials[3].reflactionIndex = 1.0f;
+	materials[3].reflectionIndex = 1.0f;
 	materials[3].refractionIndex = 0.0f;
 
     materials[4].color = (Vec3) { 0.0f, 0.0f, 1.0f };
-	materials[4].reflactionIndex = 0.5f;
+	materials[4].reflectionIndex = 0.5f;
 	materials[4].refractionIndex = 0.0f;
 
     Plane planes[5] = {0};
@@ -198,11 +198,12 @@ int main(int argc, char* argv[]) {
 				((uint32_t)(color.b * 255) << 0);
         }
 		printf("\rRaytracing %d%%", (uint32_t)(100 * ((double)(y) / (double)(height))));
-        handleInput();
-        render(renderer, image);
+        handleEvents();
+        renderImage(renderer, image);
     }
 
     bitmap_save_image("test.bmp", image);
+    
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();

@@ -98,3 +98,11 @@ Vec3 vec3_div(Vec3 a, double b) {
     a.z /= b;
     return a;
 }
+
+Vec3 vec3_reflect(Vec3 incomingVec, Vec3 normal) {
+    ASSERT_VECTOR_VALUE_NOT_NAN(incomingVec);
+    ASSERT_VECTOR_VALUE_NOT_NAN(normal);
+    Vec3 reversedVec = vec3_mul(incomingVec, -1);
+    Vec3 reflectedVec = vec3_norm(vec3_sub(vec3_mul(normal, 2.0f * vec3_dot(normal, reversedVec)), reversedVec));
+    return reflectedVec;
+}

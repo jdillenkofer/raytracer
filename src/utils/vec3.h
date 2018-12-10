@@ -27,5 +27,6 @@ double vec3_length(Vec3 a);
 Vec3 vec3_offset(Vec3 a, double offset);
 Vec3 vec3_mul(Vec3 a, double b);
 Vec3 vec3_div(Vec3 a, double b);
+Vec3 vec3_reflect(Vec3 incomingVec, Vec3 normal);
 
 #endif //RAYTRACER_VEC3_H
