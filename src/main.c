@@ -42,7 +42,8 @@ int main(int argc, char* argv[]) {
     uint32_t width = 1920;
     uint32_t height = 1080;
     double FOV = 110.0f;
-	uint32_t raysPerPixel = 32;
+	uint32_t raysPerPixel = 16;
+    uint32_t numShadowRays = 16;
 	uint32_t maxRecursionDepth = 10;
     Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
     Image* image = image_create(width, height);
@@ -53,7 +54,7 @@ int main(int argc, char* argv[]) {
 	materials[0].refractionIndex = 0.0f;
     
 	materials[1].color = (Vec3) { 0.4f, 0.4f, 0.4f };
-	materials[1].reflectionIndex = 0.4f;
+	materials[1].reflectionIndex = 0.0f;
 	materials[1].refractionIndex = 0.0f;
 
     materials[2].color = (Vec3) { 1.0f, 0.0f, 0.0f };
@@ -108,7 +109,7 @@ int main(int argc, char* argv[]) {
     triangles[0].v2 = (Vec3) { 0.0f, 5.0f, 1.0f };
 
     PointLight pointLights[1] = {0};
-    pointLights[0].position = (Vec3) { 0.0f, 30.0f, 40.0f };
+    pointLights[0].position = (Vec3) { 2.0f, 30.0f, 40.0f };
     pointLights[0].emissionColor = (Vec3) { 1.0f, 1.0f, 1.0f };
     pointLights[0].strength = 1500.0f;
 
@@ -158,7 +159,7 @@ int main(int argc, char* argv[]) {
 
     for (uint32_t y = 0; y < height; y++) {
         double PosY = -1.0f + 2.0f * ((double)y / (camera->height));
-#ifndef OPENMP
+#ifdef OPENMP
     #ifndef _WINDOWS
             #pragma omp parallel for
     #endif
@@ -179,7 +180,7 @@ int main(int argc, char* argv[]) {
                             vec3_norm(vec3_sub(renderTargetPos, camera->position))
                     };
 
-                    Vec3 currentRayColor = raytracer_raycast(&scene, &ray, 0, maxRecursionDepth);
+                    Vec3 currentRayColor = raytracer_raycast(&scene, &ray, numShadowRays, 0, maxRecursionDepth);
                     color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
                 }
             }

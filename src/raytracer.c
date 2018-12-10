@@ -2,6 +2,7 @@
 
 #include <float.h>
 #include <stdbool.h>
+#include <utils/random.h>
 
 #include "utils/math.h"
 
@@ -164,7 +165,7 @@ static void raytracer_calcClosestTriangleIntersect(Scene* scene, Ray* ray, doubl
     }
 }
 
-Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, uint32_t maxRecursionDepth) {
+Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t numShadowRays, uint32_t recursionDepth, uint32_t maxRecursionDepth) {
     Vec3 outColor = (Vec3) { 0.0f, 0.0f, 0.0f };
 
     double minHitDistance = DBL_MAX;
@@ -191,13 +192,12 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, u
             reflectedRay.direction = vec3_reflect(primaryRay->direction, intersectionNormal);
             raytracer_moveRayOutOfObject(&reflectedRay);
 
-			Vec3 reflectionColor = raytracer_raycast(scene, &reflectedRay, recursionDepth + 1, maxRecursionDepth);
+			Vec3 reflectionColor = raytracer_raycast(scene, &reflectedRay, numShadowRays, recursionDepth + 1, maxRecursionDepth);
 
 			outColor = vec3_add(outColor, vec3_mul(reflectionColor, hitMaterial->reflectionIndex));
 		}
 
 		// TODO: FIX REFRACTION
-		/*
 		if (hitMaterial->refractionIndex > 0 && recursionDepth <= maxRecursionDepth) {
 			
 			double cosi = math_clamp(-1, 1, vec3_dot(hitPoint, intersectionNormal));
@@ -227,45 +227,48 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, u
 			refractedRay.direction = refractedDir;
             raytracer_moveRayOutOfObject(&refractedRay);
 
-			Vec3 refractionColor = raytracer_raycast(scene, &refractedRay, recursionDepth + 1, maxRecursionDepth);
+			Vec3 refractionColor = raytracer_raycast(scene, &refractedRay, numShadowRays, recursionDepth + 1, maxRecursionDepth);
 
 			outColor = vec3_add(outColor, vec3_mul(refractionColor, hitMaterial->refractionIndex));
 		}
-		*/
 
         for (uint32_t i = 0; i < scene->pointLightCount; i++) {
-            PointLight* pointLight = &scene->pointLights[i];
-            Ray shadowRay = {0};
-            Vec3 hitToLight = vec3_sub(pointLight->position, hitPoint);
-            double distanceToLight = vec3_length(hitToLight);
+            for (uint32_t x = 0; x < numShadowRays; x++) {
+                PointLight* pointLight = &scene->pointLights[i];
+                Ray shadowRay = {0};
+                Vec3 hitToLight = vec3_sub(pointLight->position, hitPoint);
+                Vec3 randomOffset = vec3_norm((Vec3) { random_bilateral(), random_bilateral(), random_bilateral()});
+                hitToLight = vec3_add(hitToLight, randomOffset);
+                double distanceToLight = vec3_length(hitToLight);
 
-            shadowRay.origin = hitPoint;
-            shadowRay.direction = vec3_norm(hitToLight);
-            raytracer_moveRayOutOfObject(&shadowRay);
+                shadowRay.origin = hitPoint;
+                shadowRay.direction = vec3_norm(hitToLight);
+                raytracer_moveRayOutOfObject(&shadowRay);
 
-            uint32_t shadowRayHitMaterialIndex = 0;
-            double closestHitDistance = DBL_MAX;
-            Vec3 shadowRayIntersectionNormal = {0, 0, 0};
-            raytracer_calcClosestPlaneIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
-            raytracer_calcClosestSphereIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
-            raytracer_calcClosestTriangleIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
-            if (distanceToLight < closestHitDistance) {
-                // we hit the light
-                double cosAngle = vec3_dot(shadowRay.direction, intersectionNormal);
-                cosAngle = math_clamp(cosAngle, 0.0f, 1.0f);
+                uint32_t shadowRayHitMaterialIndex = 0;
+                double closestHitDistance = DBL_MAX;
+                Vec3 shadowRayIntersectionNormal = {0, 0, 0};
+                raytracer_calcClosestPlaneIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
+                raytracer_calcClosestSphereIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
+                raytracer_calcClosestTriangleIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
+                if (distanceToLight < closestHitDistance) {
+                    // we hit the light
+                    double cosAngle = vec3_dot(shadowRay.direction, intersectionNormal);
+                    cosAngle = math_clamp(cosAngle, 0.0f, 1.0f);
 
-                double lightStrength = (pointLight->strength/(distanceToLight * distanceToLight));
-                Vec3 diffuseLighting = vec3_mul(pointLight->emissionColor, cosAngle * lightStrength);
+                    double lightStrength = (pointLight->strength/(distanceToLight * distanceToLight));
+                    Vec3 diffuseLighting = vec3_mul(pointLight->emissionColor, cosAngle * lightStrength);
 
-                Vec3 toView = vec3_norm(vec3_sub(scene->camera->position, hitPoint));
-                Vec3 toLight = vec3_mul(shadowRay.direction, -1);
-                Vec3 reflectionVector = vec3_reflect(toLight, intersectionNormal);
-                cosAngle = vec3_dot(toView, reflectionVector);
-                cosAngle = pow(cosAngle, 64);
+                    Vec3 toView = vec3_norm(vec3_sub(scene->camera->position, hitPoint));
+                    Vec3 toLight = vec3_mul(shadowRay.direction, -1);
+                    Vec3 reflectionVector = vec3_reflect(toLight, intersectionNormal);
+                    cosAngle = vec3_dot(toView, reflectionVector);
+                    cosAngle = pow(cosAngle, 64);
 
-                Vec3 specularLighting = vec3_mul(pointLight->emissionColor, cosAngle * lightStrength);
+                    Vec3 specularLighting = vec3_mul(pointLight->emissionColor, cosAngle * lightStrength);
 
-                outColor = vec3_add(outColor, vec3_mul(vec3_add(diffuseLighting, specularLighting), 1-hitMaterial->reflectionIndex));
+                    outColor = vec3_add(outColor, vec3_mul(vec3_add(diffuseLighting, specularLighting), (1.0f/(double) numShadowRays) * (1-hitMaterial->reflectionIndex)));
+                }
             }
         }
         outColor = vec3_hadamard(outColor, hitMaterial->color);
