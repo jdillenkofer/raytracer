@@ -5,8 +5,34 @@
 #include "scene.h"
 #include "raytracer.h"
 
+#include <SDL2/SDL.h>
 #include <omp.h>
 #include <utils/random.h>
+
+void handleInput() {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        switch(event.type) {
+            case SDL_QUIT:
+                SDL_Quit();
+                exit(0);
+            default:
+                break;
+        }
+    }
+}
+
+void render(SDL_Renderer* renderer, Image* image) {
+    SDL_Surface* surface =
+            SDL_CreateRGBSurfaceFrom((void*)image->buffer, (int) image->width, (int) image->height, 32,
+                                     (int) sizeof(uint32_t) * image->width, 0xFF << 16, 0xFF << 8, 0xFF, 0xFF << 24);
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+    SDL_DestroyTexture(texture);
+    SDL_RenderPresent(renderer);
+}
 
 int main(int argc, char* argv[]) {
     (void) argc;
@@ -16,8 +42,8 @@ int main(int argc, char* argv[]) {
     uint32_t width = 1920;
     uint32_t height = 1080;
     double FOV = 110.0f;
-	uint32_t raysPerPixel = 1;
-	uint32_t maxRecursionDepth = 10;
+	uint32_t raysPerPixel = 16;
+	uint32_t maxRecursionDepth = 5;
     Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
     Image* image = image_create(width, height);
 
@@ -43,18 +69,23 @@ int main(int argc, char* argv[]) {
 	materials[4].refractionIndex = 0.0f;
 
     Plane planes[5] = {0};
+    // floor
     planes[0].materialIndex = 1;
     planes[0].normal = (Vec3) { 0.0f, 0.0f, 1.0f };
     planes[0].distanceFromOrigin = 0;
+    // front wall
     planes[1].materialIndex = 1;
     planes[1].normal = (Vec3) { 0.0f, 1.0f, 0.0f };
     planes[1].distanceFromOrigin = 8;
+    // back wall
 	planes[2].materialIndex = 1;
 	planes[2].normal = (Vec3) { 0.0f, 1.0f, 0.0f };
 	planes[2].distanceFromOrigin = 40;
+	// left wall
 	planes[3].materialIndex = 1;
 	planes[3].normal = (Vec3) { 1.0f, 0.0f, 0.0f };
 	planes[3].distanceFromOrigin = -8;
+	// right wall
 	planes[4].materialIndex = 1;
 	planes[4].normal = (Vec3) { 1.0f, 0.0f, 0.0f };
 	planes[4].distanceFromOrigin = 8;
@@ -111,9 +142,23 @@ int main(int argc, char* argv[]) {
     }
 
 
+    if (SDL_Init(SDL_INIT_VIDEO)) {
+        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Unable to initialize SDL: %s", SDL_GetError());
+        return 1;
+    }
+
+    SDL_Window* window = SDL_CreateWindow("Raytracer",
+            SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, (int32_t) width, (int32_t) height, SDL_WINDOW_OPENGL);
+    if (!window) {
+        SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Unable to create window: %s", SDL_GetError());
+        return 2;
+    }
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+
     for (uint32_t y = 0; y < height; y++) {
         double PosY = -1.0f + 2.0f * ((double)y / (camera->height));
-#ifdef OPENMP
+#ifndef OPENMP
     #ifndef _WINDOWS
             #pragma omp parallel for
     #endif
@@ -151,12 +196,16 @@ int main(int argc, char* argv[]) {
 				((uint32_t)(color.r * 255) << 16) |
 				((uint32_t)(color.g * 255) << 8) |
 				((uint32_t)(color.b * 255) << 0);
-
         }
 		printf("\rRaytracing %d%%", (uint32_t)(100 * ((double)(y) / (double)(height))));
+        handleInput();
+        render(renderer, image);
     }
 
     bitmap_save_image("test.bmp", image);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 
     image_destroy(image);
     camera_destroy(camera);

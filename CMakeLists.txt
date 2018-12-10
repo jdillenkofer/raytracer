@@ -1,12 +1,16 @@
 cmake_minimum_required(VERSION 3.11)
 project(Raytracer)
 
-set(EXECUTABLE_NAME
-        raytracer
-        )
-
 set(CMAKE_C_STANDARD
         11)
+
+set(EXECUTABLE_NAME
+		raytracer)
+
+# find SDL2
+find_package(SDL2 REQUIRED COMPONENTS SDL2::SDL2)
+include_directories(${SDL2_INCLUDE_DIRS})
+
 
 if (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "CLANG"))
     set(CMAKE_C_FLAGS
@@ -69,10 +73,6 @@ set(HEADER_FILES
         src/pointlight.h)
 
 if (UNIX)
-	link_libraries(m)
-endif (UNIX)
-
-if (UNIX)
 	find_package(OpenMP)
 	if (OPENMP_FOUND)
 		set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -81,4 +81,10 @@ if (UNIX)
 	endif()
 endif(UNIX)
 
-add_executable(${EXECUTABLE_NAME} ${SOURCE_FILES} ${HEADER_FILES})
+add_executable(raytracer ${SOURCE_FILES} ${HEADER_FILES})
+
+if (UNIX)
+	target_link_libraries(${EXECUTABLE_NAME} m)
+endif (UNIX)
+
+target_link_libraries(${EXECUTABLE_NAME} SDL2::SDL2)
