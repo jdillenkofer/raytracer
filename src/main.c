@@ -104,9 +104,9 @@ int main(int argc, char* argv[]) {
 
     Triangle triangles[1] = {0};
     triangles[0].materialIndex = 2;
-    triangles[0].v0 = (Vec3) { -1.0f, 5.0f, 0.0f };
-    triangles[0].v1 = (Vec3) { 1.0f, 5.0f, 0.0f };
-    triangles[0].v2 = (Vec3) { 0.0f, 5.0f, 1.0f };
+    triangles[0].v0 = (Vec3) { -1.0f, 1.0f, 0.0f };
+    triangles[0].v1 = (Vec3) { 1.0f, 1.0f, 0.0f };
+    triangles[0].v2 = (Vec3) { 0.0f, 1.0f, 1.0f };
 
     PointLight pointLights[1] = {0};
     pointLights[0].position = (Vec3) { 2.0f, 30.0f, 40.0f };

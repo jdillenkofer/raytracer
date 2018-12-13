@@ -28,8 +28,7 @@ static bool raytracer_intersectPlane(Plane* plane, Ray* ray, double* hitDistance
             double t = (-plane->distanceFromOrigin - cosAngle) / denominator;
             // only hit objects in front of us
             if (t > 0) {
-                *intersectionNormal = cosAngle > 0 ?
-                        plane->normal : vec3_mul(plane->normal, -1);
+                *intersectionNormal = plane->normal;
                 *hitDistance = t;
                 return true;
             }
@@ -76,10 +75,8 @@ static bool raytracer_intersectTriangle(Triangle* triangle, Ray* ray, double* hi
         return false;
     }
 
-    double d = vec3_dot(normal, vec3_sub(ray->origin, triangle->v0));
-
-    // TODO: THIS IS WRONG
-	double t = -(d) / normalDotRayDir;
+    double d = vec3_dot(normal, triangle->v0);
+	double t = -(vec3_dot(normal, ray->origin) - d) / normalDotRayDir;
     if (t > 0) {
         Vec3 hitPoint = raytracer_calculateHitpoint(ray, t);
 
@@ -107,10 +104,7 @@ static bool raytracer_intersectTriangle(Triangle* triangle, Ray* ray, double* hi
             return false;
         }
 
-        // TODO: TRIANGLE NORMAL IS WRONG
-		double cosAngle = vec3_dot(normal, ray->origin);
-        *intersectionNormal = cosAngle > 0 ?
-			normal : vec3_mul(normal, -1);
+        *intersectionNormal = normal;
         *hitDistance = t;
         return true;
     }
