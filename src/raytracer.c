@@ -194,7 +194,7 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t numShadowRays, ui
 		// TODO: FIX REFRACTION
 		if (hitMaterial->refractionIndex > 0 && recursionDepth <= maxRecursionDepth) {
 			
-			double cosi = math_clamp(-1, 1, vec3_dot(hitPoint, intersectionNormal));
+			double cosi = math_clamp(-1, 1, vec3_dot(primaryRay->direction, intersectionNormal));
 			// refractionIndex of air is ~ 1
 			double etai = 1; double etat = hitMaterial->refractionIndex;
 			Vec3 n = intersectionNormal;
@@ -213,7 +213,7 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t numShadowRays, ui
 			if (k < 0) {
 				refractedDir = (Vec3) { 0, 0, 0 };
 			} else {
-				refractedDir = vec3_norm(vec3_add(vec3_mul(hitPoint, eta), vec3_mul(n, eta * cosi - sqrt(k))));
+				refractedDir = vec3_norm(vec3_add(vec3_mul(primaryRay->direction, eta), vec3_mul(n, eta * cosi - sqrt(k))));
 			}
 			
 			Ray refractedRay;

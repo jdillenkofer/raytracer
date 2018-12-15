@@ -42,8 +42,8 @@ int main(int argc, char* argv[]) {
     uint32_t width = 1920;
     uint32_t height = 1080;
     double FOV = 110.0f;
-	uint32_t raysPerPixel = 16;
-    uint32_t numShadowRays = 16;
+	uint32_t raysPerPixel = 1;
+    uint32_t numShadowRays = 1;
 	uint32_t maxRecursionDepth = 10;
     Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
     Image* image = image_create(width, height);
@@ -65,9 +65,9 @@ int main(int argc, char* argv[]) {
 	materials[3].reflectionIndex = 1.0f;
 	materials[3].refractionIndex = 0.0f;
 
-    materials[4].color = (Vec3) { 0.0f, 0.0f, 1.0f };
-	materials[4].reflectionIndex = 0.5f;
-	materials[4].refractionIndex = 0.0f;
+    materials[4].color = (Vec3) { 1.0f, 1.0f, 1.0f };
+	materials[4].reflectionIndex = 0.05f;
+	materials[4].refractionIndex = 1.4f;
 
     Plane planes[5] = {0};
     // floor
@@ -99,19 +99,19 @@ int main(int argc, char* argv[]) {
     spheres[1].position = (Vec3) { 0.0f, 0.0f, 1.5f };
     spheres[1].radius = 1;
     spheres[2].materialIndex = 4;
-    spheres[2].position = (Vec3) { 3.0f, 0.0f, 2.0f };
+    spheres[2].position = (Vec3) { 3.0f, 3.0f, 1.0f };
     spheres[2].radius = 1;
 
     Triangle triangles[1] = {0};
     triangles[0].materialIndex = 2;
-    triangles[0].v0 = (Vec3) { -1.0f, 1.0f, 0.0f };
-    triangles[0].v1 = (Vec3) { 1.0f, 1.0f, 0.0f };
-    triangles[0].v2 = (Vec3) { 0.0f, 1.0f, 1.0f };
+    triangles[0].v0 = (Vec3) { 2.0f, 0.0f, 0.0f };
+    triangles[0].v1 = (Vec3) { 4.0f, 0.0f, 0.0f };
+    triangles[0].v2 = (Vec3) { 3.0f, 0.0f, 1.0f };
 
     PointLight pointLights[1] = {0};
-    pointLights[0].position = (Vec3) { 2.0f, 30.0f, 40.0f };
+    pointLights[0].position = (Vec3) { -3.0f, 30.0f, 40.0f };
     pointLights[0].emissionColor = (Vec3) { 1.0f, 1.0f, 1.0f };
-    pointLights[0].strength = 1500.0f;
+    pointLights[0].strength = 1000.0f;
 
     Scene scene = {0};
     scene.camera = camera;
