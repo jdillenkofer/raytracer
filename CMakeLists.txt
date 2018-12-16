@@ -48,7 +48,6 @@ set(SOURCE_FILES
         src/main.c
         src/utils/vec3.c
         src/utils/math.c
-        src/utils/angle.c
 		src/utils/random.c
         src/camera.c
         src/triangle.c
@@ -59,7 +58,6 @@ set(SOURCE_FILES
 set(HEADER_FILES
         src/utils/vec3.h
         src/utils/math.h
-        src/utils/angle.h
 		src/utils/random.h
         src/camera.h
         src/triangle.h

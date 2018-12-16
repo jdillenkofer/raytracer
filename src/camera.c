@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "utils/random.h"
-#include "utils/angle.h"
+#include "utils/math.h"
 
 // See: http://web.cse.ohio-state.edu/~shen.94/681/Site/Slides_files/basic_algo.pdf
 static void camera_setup(Camera *camera) {
@@ -25,7 +25,7 @@ static void camera_setup(Camera *camera) {
     double diagonale = sqrt(
             (camera->renderTargetWidth * camera->renderTargetWidth) +
             (camera->renderTargetHeight * camera->renderTargetHeight));
-    camera->renderTargetDistance = (diagonale * (2.0f*tan(angle_deg2rad(camera->FOV)/2.0f)));
+    camera->renderTargetDistance = (diagonale * (2.0f*tan(math_deg2rad(camera->FOV)/2.0f)));
 
     // centerPos on RenderTarget
     camera->renderTargetCenter = vec3_sub(camera->position, vec3_mul(camera->z, camera->renderTargetDistance));

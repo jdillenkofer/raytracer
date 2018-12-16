@@ -43,8 +43,7 @@ int main(int argc, char* argv[]) {
     uint32_t height = 1080;
     double FOV = 110.0f;
 	uint32_t raysPerPixel = 1;
-    uint32_t numShadowRays = 1;
-	uint32_t maxRecursionDepth = 10;
+	uint32_t maxRecursionDepth = 8;
     Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
     Image* image = image_create(width, height);
 
@@ -66,7 +65,7 @@ int main(int argc, char* argv[]) {
 	materials[3].refractionIndex = 0.0f;
 
     materials[4].color = (Vec3) { 1.0f, 1.0f, 1.0f };
-	materials[4].reflectionIndex = 0.05f;
+	materials[4].reflectionIndex = 1.0f;
 	materials[4].refractionIndex = 1.4f;
 
     Plane planes[5] = {0};
@@ -81,7 +80,7 @@ int main(int argc, char* argv[]) {
     // back wall
 	planes[2].materialIndex = 1;
 	planes[2].normal = (Vec3) { 0.0f, 1.0f, 0.0f };
-	planes[2].distanceFromOrigin = 40;
+	planes[2].distanceFromOrigin = -40;
 	// left wall
 	planes[3].materialIndex = 1;
 	planes[3].normal = (Vec3) { 1.0f, 0.0f, 0.0f };
@@ -111,7 +110,7 @@ int main(int argc, char* argv[]) {
     PointLight pointLights[1] = {0};
     pointLights[0].position = (Vec3) { -3.0f, 30.0f, 40.0f };
     pointLights[0].emissionColor = (Vec3) { 1.0f, 1.0f, 1.0f };
-    pointLights[0].strength = 1000.0f;
+    pointLights[0].strength = 20000.0f;
 
     Scene scene = {0};
     scene.camera = camera;
@@ -138,8 +137,8 @@ int main(int argc, char* argv[]) {
     if (raysPerPixel > 1) {
         raysPerWidthPixel = (uint32_t) (rootTerm - (pixelWidth - pixelHeight / 2 * pixelHeight));
         raysPerHeightPixel = (uint32_t) (raysPerPixel / raysPerWidthPixel);
-        deltaX = pixelWidth / (raysPerWidthPixel - 1);
-        deltaY = pixelHeight / (raysPerHeightPixel - 1);
+        deltaX = pixelWidth / raysPerWidthPixel;
+        deltaY = pixelHeight / raysPerHeightPixel;
     }
 
 
@@ -171,16 +170,16 @@ int main(int argc, char* argv[]) {
             for (uint32_t j = 0; j < raysPerHeightPixel; j++) {
                 for (uint32_t i = 0; i < raysPerWidthPixel; i++) {
                     Vec3 OffsetY = vec3_mul(camera->y,
-                                            (PosY - pixelWidth + (j + 1) * deltaY)*camera->renderTargetHeight/2.0f);
+                                            (PosY - pixelWidth + j * deltaY)*camera->renderTargetHeight/2.0f);
                     Vec3 OffsetX = vec3_mul(camera->x,
-                                            (PosX - pixelHeight + (i + 1) * deltaX)*camera->renderTargetWidth/2.0f);
+                                            (PosX - pixelHeight + i * deltaX)*camera->renderTargetWidth/2.0f);
                     Vec3 renderTargetPos = vec3_add(vec3_add(camera->renderTargetCenter, OffsetX), OffsetY);
                     Ray ray = {
                             camera->position,
                             vec3_norm(vec3_sub(renderTargetPos, camera->position))
                     };
 
-                    Vec3 currentRayColor = raytracer_raycast(&scene, &ray, numShadowRays, 0, maxRecursionDepth);
+                    Vec3 currentRayColor = raytracer_raycast(&scene, &ray, 0, maxRecursionDepth);
                     color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
                 }
             }
