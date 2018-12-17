@@ -113,6 +113,8 @@ int main(int argc, char* argv[]) {
     pointLights[0].emissionColor = (Vec3) { 1.0f, 1.0f, 1.0f };
     pointLights[0].strength = 20000.0f;
 
+    // Object* cube = object_loadFromFile("cube.obj");
+
     Scene scene = {0};
     scene.camera = camera;
     scene.materialCount = 5;
@@ -125,9 +127,6 @@ int main(int argc, char* argv[]) {
     scene.triangles = triangles;
     scene.pointLightCount = 1;
     scene.pointLights = pointLights;
-
-    Object* teapot = object_loadFromFile("teapot.obj");
-    object_destroy(teapot);
 
 	double rayColorContribution = 1.0f / (double) raysPerPixel;
 
@@ -212,6 +211,7 @@ int main(int argc, char* argv[]) {
     SDL_DestroyWindow(window);
     SDL_Quit();
 
+    // object_destroy(cube);
     image_destroy(image);
     camera_destroy(camera);
     return 0;

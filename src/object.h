@@ -6,6 +6,7 @@
 #include "triangle.h"
 
 typedef struct {
+    uint32_t space;
     uint32_t triangleCount;
     Triangle* triangles;
 } Object;
