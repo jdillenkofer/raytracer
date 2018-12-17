@@ -37,7 +37,7 @@ void renderImage(SDL_Renderer *renderer, Image *image) {
 int main(int argc, char* argv[]) {
     (void) argc;
     (void) argv;
-    Vec3 camera_pos = { 0.0f , 40.0f, 2.0f };
+    Vec3 camera_pos = { 0.0f , 2.0f, 40.0f };
     Vec3 lookAt = (Vec3) {0.0f, 0.0f, 0.0f};
     uint32_t width = 1920;
     uint32_t height = 1080;
@@ -71,15 +71,15 @@ int main(int argc, char* argv[]) {
     Plane planes[5] = {0};
     // floor
     planes[0].materialIndex = 1;
-    planes[0].normal = (Vec3) { 0.0f, 0.0f, 1.0f };
+    planes[0].normal = (Vec3) { 0.0f, 1.0f, 0.0f };
     planes[0].distanceFromOrigin = 0;
     // front wall
     planes[1].materialIndex = 1;
-    planes[1].normal = (Vec3) { 0.0f, 1.0f, 0.0f };
+    planes[1].normal = (Vec3) { 0.0f, 0.0f, 1.0f };
     planes[1].distanceFromOrigin = 8;
     // back wall
 	planes[2].materialIndex = 1;
-	planes[2].normal = (Vec3) { 0.0f, 1.0f, 0.0f };
+	planes[2].normal = (Vec3) { 0.0f, 0.0f, 1.0f };
 	planes[2].distanceFromOrigin = -40;
 	// left wall
 	planes[3].materialIndex = 1;
@@ -92,23 +92,23 @@ int main(int argc, char* argv[]) {
 
     Sphere spheres[3] = {0};
     spheres[0].materialIndex = 2;
-    spheres[0].position = (Vec3) { -3.0f, 0.0f, 1.0f };
+    spheres[0].position = (Vec3) { -3.0f, 1.0f, 0.0f };
     spheres[0].radius = 1;
     spheres[1].materialIndex = 3;
-    spheres[1].position = (Vec3) { 0.0f, 0.0f, 1.5f };
+    spheres[1].position = (Vec3) { 0.0f, 1.5f, 0.0f };
     spheres[1].radius = 1;
     spheres[2].materialIndex = 4;
-    spheres[2].position = (Vec3) { 3.0f, 3.0f, 1.0f };
+    spheres[2].position = (Vec3) { 3.0f, 1.0f, 3.0f };
     spheres[2].radius = 1;
 
     Triangle triangles[1] = {0};
     triangles[0].materialIndex = 2;
     triangles[0].v0 = (Vec3) { 2.0f, 0.0f, 0.0f };
     triangles[0].v1 = (Vec3) { 4.0f, 0.0f, 0.0f };
-    triangles[0].v2 = (Vec3) { 3.0f, 0.0f, 1.0f };
+    triangles[0].v2 = (Vec3) { 3.0f, 1.0f, 0.0f };
 
     PointLight pointLights[1] = {0};
-    pointLights[0].position = (Vec3) { -3.0f, 30.0f, 40.0f };
+    pointLights[0].position = (Vec3) { -3.0f, 40.0f, 30.0f };
     pointLights[0].emissionColor = (Vec3) { 1.0f, 1.0f, 1.0f };
     pointLights[0].strength = 20000.0f;
 
@@ -173,7 +173,7 @@ int main(int argc, char* argv[]) {
                                             (PosY - pixelWidth + j * deltaY)*camera->renderTargetHeight/2.0f);
                     Vec3 OffsetX = vec3_mul(camera->x,
                                             (PosX - pixelHeight + i * deltaX)*camera->renderTargetWidth/2.0f);
-                    Vec3 renderTargetPos = vec3_add(vec3_add(camera->renderTargetCenter, OffsetX), OffsetY);
+                    Vec3 renderTargetPos = vec3_sub(vec3_add(camera->renderTargetCenter, OffsetX), OffsetY);
                     Ray ray = {
                             camera->position,
                             vec3_norm(vec3_sub(renderTargetPos, camera->position))

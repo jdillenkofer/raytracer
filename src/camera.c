@@ -10,7 +10,7 @@ static void camera_setup(Camera *camera) {
     // Setup Camera Coordinate System
     //
     camera->z = vec3_norm(vec3_sub(camera->position, camera->lookAt));
-    camera->x = vec3_norm(vec3_cross((Vec3) { 0, 0, -1 }, camera->z));
+    camera->x = vec3_norm(vec3_cross((Vec3) { 0.0f, 1.0f, 0.0f }, camera->z));
     camera->y = vec3_norm(vec3_cross(camera->z, camera->x));
 
     camera->renderTargetWidth = 1.0f;

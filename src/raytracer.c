@@ -24,14 +24,14 @@ static Vec3 raytracer_refract(Vec3 direction, Vec3 normal, double refractionInde
 
     Vec3 refractedDir;
     if (k < 0) {
-        refractedDir = (Vec3) { 0, 0, 0 };
+        refractedDir = (Vec3) {0};
     } else {
         refractedDir = vec3_norm(vec3_add(vec3_mul(direction, eta), vec3_mul(n, eta * cosi - sqrt(k))));
     }
     return refractedDir;
 }
 
-static double raytracer_fresnel(Vec3 dir, Vec3 normal, float refractionIndex) {
+static double raytracer_fresnel(Vec3 dir, Vec3 normal, double refractionIndex) {
     double kr;
     double cosi = math_clamp(-1, 1, vec3_dot(dir, normal));
     double etai = 1;
@@ -42,14 +42,14 @@ static double raytracer_fresnel(Vec3 dir, Vec3 normal, float refractionIndex) {
         etai = tmp;
     }
     // Snell's law
-    float sint = etai / etat * sqrtf(MAX(0.f, 1 - cosi * cosi));
+    double sint = etai / etat * sqrtf(MAX(0.f, 1.0f - cosi * cosi));
     if (sint >= 1) {
         kr = 1;
     } else {
-        float cost = sqrtf(MAX(0.f, 1 - sint * sint));
-        cosi = fabsf(cosi);
-        float Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
-        float Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
+        double cost = sqrtf(MAX(0.f, 1.0f - sint * sint));
+        cosi = fabs(cosi);
+        double Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
+        double Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
         kr = (Rs * Rs + Rp * Rp) / 2;
     }
     return kr;
@@ -209,7 +209,7 @@ static void raytracer_calcClosestTriangleIntersect(Scene* scene, Ray* ray, doubl
 }
 
 Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, uint32_t maxRecursionDepth) {
-    Vec3 outColor = (Vec3) { 0.0f, 0.0f, 0.0f };
+    Vec3 outColor = (Vec3) {0};
 
     if (recursionDepth >= maxRecursionDepth) {
         return outColor;
@@ -218,7 +218,7 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, u
     double minHitDistance = DBL_MAX;
     uint32_t hitMaterialIndex = 0;
 
-    Vec3 intersectionNormal = {0, 0, 0};
+    Vec3 intersectionNormal = {0};
 
     raytracer_calcClosestPlaneIntersect(scene, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex);
     raytracer_calcClosestSphereIntersect(scene, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex);
@@ -235,7 +235,7 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, u
 		if (hitMaterial->refractionIndex > 0) {
 		    double kr = raytracer_fresnel(primaryRay->direction, intersectionNormal, hitMaterial->refractionIndex);
 
-            Vec3 refractionColor = { 0.0f, 0.0f, 0.0f };
+            Vec3 refractionColor = {0};
 
             // compute refraction if it is not a case of total internal reflection
             if (kr < 1) {
@@ -285,7 +285,7 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, u
 
             uint32_t shadowRayHitMaterialIndex = 0;
             double closestHitDistance = DBL_MAX;
-            Vec3 shadowRayIntersectionNormal = {0, 0, 0};
+            Vec3 shadowRayIntersectionNormal = {0};
             raytracer_calcClosestPlaneIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
             raytracer_calcClosestSphereIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
             raytracer_calcClosestTriangleIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
