@@ -113,7 +113,12 @@ int main(int argc, char* argv[]) {
     pointLights[0].emissionColor = (Vec3) { 1.0f, 1.0f, 1.0f };
     pointLights[0].strength = 20000.0f;
 
-    // Object* cube = object_loadFromFile("cube.obj");
+    /*
+    Object* teapot = object_loadFromFile("teapot.obj");
+    object_scale(teapot, 0.01);
+    object_translate(teapot, (Vec3) { 3.0f, 1.0f, 5.0f });
+    object_materialIndex(teapot, 2);
+    */
 
     Scene scene = {0};
     scene.camera = camera;
@@ -211,7 +216,7 @@ int main(int argc, char* argv[]) {
     SDL_DestroyWindow(window);
     SDL_Quit();
 
-    // object_destroy(cube);
+    // object_destroy(teapot);
     image_destroy(image);
     camera_destroy(camera);
     return 0;

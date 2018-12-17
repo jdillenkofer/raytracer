@@ -3,8 +3,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "utils/file.h"
+#include "vertextable.h"
+
+static void object_skipToNextWhitespace(char* data, size_t* offset) {
+    char* dataPtr = &data[*offset];
+    while(*dataPtr != '\0' && (*dataPtr != '\n' && *dataPtr != ' ' && *dataPtr != '\t')) {
+        dataPtr = &data[++(*offset)];
+    }
+}
 
 static void object_skipWhitespace(char* data, size_t* offset) {
     char* dataPtr = &data[*offset];
@@ -57,41 +66,7 @@ static uint32_t object_getInt(char *data, size_t *offset) {
     }
     memcpy(buff, &data[startOffset], length);
     buff[length] = '\0';
-    return atoi(buff);
-}
-
-typedef struct {
-    Vec3* vertices;
-    size_t elements;
-    size_t space;
-} VertexTable;
-
-static VertexTable* object_createVertexTable() {
-    VertexTable* vertexTable = malloc(sizeof(VertexTable));
-    vertexTable->elements = 0;
-    vertexTable->space = 200;
-    vertexTable->vertices = malloc(sizeof(Vec3) * vertexTable->space);
-    return vertexTable;
-}
-
-static void object_addVertex(VertexTable* vertexTable, Vec3 vertex) {
-    if (vertexTable->space < vertexTable->elements + 1) {
-        vertexTable->space *= 2;
-        vertexTable->vertices = realloc(vertexTable->vertices, sizeof(Vec3) * vertexTable->space);
-    }
-    vertexTable->vertices[vertexTable->elements++] = vertex;
-}
-
-static Vec3 object_getVertexById(VertexTable* vertexTable, uint32_t id) {
-    assert(id > 0 && id <= vertexTable->elements);
-    return vertexTable->vertices[id - 1];
-}
-
-static void object_destroyVertexTable(VertexTable* vertexTable) {
-    if (vertexTable != NULL) {
-        free(vertexTable->vertices);
-        free(vertexTable);
-    }
+    return (uint32_t) atoi(buff);
 }
 
 static void object_parseVertex(VertexTable* vertexTable, char* data, size_t* offset) {
@@ -104,21 +79,21 @@ static void object_parseVertex(VertexTable* vertexTable, char* data, size_t* off
     vertex.y = object_getDouble(data, offset);
     object_skipWhitespace(data, offset);
     vertex.z = object_getDouble(data, offset);
-    object_addVertex(vertexTable, vertex);
+    vertextable_addVertex(vertexTable, vertex);
 }
 
-static Object* object_createObject() {
+static Object* object_createObject(void) {
     Object* object = malloc(sizeof(Object));
     object->triangleCount = 0;
-    object->space = 200;
-    object->triangles= malloc(sizeof(Triangle) * object->space);
+    object->capacity = 200;
+    object->triangles= malloc(sizeof(Triangle) * object->capacity);
     return object;
 }
 
 static void object_addTriangle(Object* object, Triangle triangle) {
-    if (object->space < object->triangleCount + 1) {
-        object->space *= 2;
-        object->triangles = realloc(object->triangles, sizeof(Triangle) * object->space);
+    if (object->capacity < object->triangleCount + 1) {
+        object->capacity *= 2;
+        object->triangles = realloc(object->triangles, sizeof(Triangle) * object->capacity);
     }
     object->triangles[object->triangleCount++] = triangle;
 }
@@ -128,24 +103,27 @@ static void object_parseFace(Object* object, VertexTable* vertexTable, char* dat
     (*offset)++;
     object_skipWhitespace(data, offset);
     uint32_t v0Id = object_getInt(data, offset);
+    object_skipToNextWhitespace(data, offset);
     object_skipWhitespace(data, offset);
     uint32_t v1Id = object_getInt(data, offset);
+    object_skipToNextWhitespace(data, offset);
     object_skipWhitespace(data, offset);
     uint32_t v2Id = object_getInt(data, offset);
-    Vec3 v0 = object_getVertexById(vertexTable, v0Id);
-    Vec3 v1 = object_getVertexById(vertexTable, v1Id);
-    Vec3 v2 = object_getVertexById(vertexTable, v2Id);
+    object_skipToNextWhitespace(data, offset);
+    Vec3 v0 = vertextable_getVertexById(vertexTable, v0Id);
+    Vec3 v1 = vertextable_getVertexById(vertexTable, v1Id);
+    Vec3 v2 = vertextable_getVertexById(vertexTable, v2Id);
     Triangle triangle;
     triangle.v0 = v0;
     triangle.v1 = v1;
     triangle.v2 = v2;
-    triangle.materialIndex = 2;
+    triangle.materialIndex = 0;
     object_addTriangle(object, triangle);
 }
 
 Object* object_loadFromFile(const char* filepath) {
     Object* object = object_createObject();
-    VertexTable* vertexTable = object_createVertexTable();
+    VertexTable* vertexTable = vertextable_create();
 
     size_t fileSize;
     char* data = file_readFile(filepath, &fileSize);
@@ -176,8 +154,33 @@ Object* object_loadFromFile(const char* filepath) {
     } while (object_skipToNextLine(data, &offset));
 
     free(data);
-    object_destroyVertexTable(vertexTable);
+    vertextable_destroy(vertexTable);
     return object;
+}
+
+void object_scale(Object* object, double factor) {
+    for (uint32_t i = 0; i < object->triangleCount; i++) {
+        Triangle* triangle = &object->triangles[i];
+        triangle->v0 = vec3_mul(triangle->v0, factor);
+        triangle->v1 = vec3_mul(triangle->v1, factor);
+        triangle->v2 = vec3_mul(triangle->v2, factor);
+    }
+}
+
+void object_translate(Object* object, Vec3 translation) {
+    for (uint32_t i = 0; i < object->triangleCount; i++) {
+        Triangle* triangle = &object->triangles[i];
+        triangle->v0 = vec3_add(triangle->v0, translation);
+        triangle->v1 = vec3_add(triangle->v1, translation);
+        triangle->v2 = vec3_add(triangle->v2, translation);
+    }
+}
+
+void object_materialIndex(Object* object, uint32_t materialIndex) {
+    for (uint32_t i = 0; i < object->triangleCount; i++) {
+        Triangle* triangle = &object->triangles[i];
+        triangle->materialIndex = materialIndex;
+    }
 }
 
 void object_destroy(Object* object) {

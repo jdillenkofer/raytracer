@@ -55,7 +55,8 @@ set(SOURCE_FILES
         src/triangle.c
         src/scene.c
         src/raytracer.c
-		src/object.c)
+		src/object.c
+		src/vertextable.c)
 
 set(HEADER_FILES
         src/utils/vec3.h
@@ -72,7 +73,8 @@ set(HEADER_FILES
         src/sphere.h
         src/plane.h
         src/pointlight.h
-		src/object.h)
+		src/object.h
+		src/vertextable.h)
 
 if (UNIX)
 	find_package(OpenMP)

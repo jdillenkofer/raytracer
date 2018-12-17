@@ -165,7 +165,7 @@ static void raytracer_calcClosestPlaneIntersect(Scene* scene, Ray* ray, double* 
     for (uint32_t i = 0; i < scene->planeCount; i++) {
         Plane* plane = &scene->planes[i];
         double planeHitDistance = DBL_MAX;
-        Vec3 planeIntersectionNormal = {0, 0, 0};
+        Vec3 planeIntersectionNormal = {0};
         if (raytracer_intersectPlane(plane, ray, &planeHitDistance, &planeIntersectionNormal)) {
             if (planeHitDistance < *minHitDistance) {
                 *intersectionNormal = planeIntersectionNormal;
@@ -181,7 +181,7 @@ static void raytracer_calcClosestSphereIntersect(Scene* scene, Ray *ray, double*
     for (uint32_t i = 0; i < scene->sphereCount; i++) {
         Sphere* sphere = &scene->spheres[i];
         double sphereHitDistance = DBL_MAX;
-        Vec3 sphereIntersectionNormal = {0.0f, 0.0f, 0.0f};
+        Vec3 sphereIntersectionNormal = {0};
         if (raytracer_intersectSphere(sphere, ray, &sphereHitDistance, &sphereIntersectionNormal)) {
             if (sphereHitDistance < *minHitDistance) {
                 *intersectionNormal = sphereIntersectionNormal;
@@ -197,7 +197,7 @@ static void raytracer_calcClosestTriangleIntersect(Scene* scene, Ray* ray, doubl
     for (uint32_t i = 0; i < scene->triangleCount; i++) {
         Triangle* triangle = &scene->triangles[i];
         double triangleHitDistance = DBL_MAX;
-        Vec3 triangleIntersectionNormal = {0.0f, 0.0f, 0.0f};
+        Vec3 triangleIntersectionNormal = {0};
         if (raytracer_intersectTriangle(triangle, ray, &triangleHitDistance, &triangleIntersectionNormal)) {
             if (triangleHitDistance < *minHitDistance) {
                 *intersectionNormal = triangleIntersectionNormal;
