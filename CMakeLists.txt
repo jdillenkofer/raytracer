@@ -49,16 +49,19 @@ set(SOURCE_FILES
         src/utils/vec3.c
         src/utils/math.c
 		src/utils/random.c
-        src/camera.c
+		src/utils/image.c
+		src/utils/file.c
+		src/camera.c
         src/triangle.c
-        src/utils/image.c
         src/scene.c
-        src/raytracer.c)
+        src/raytracer.c
+		src/object.c)
 
 set(HEADER_FILES
         src/utils/vec3.h
         src/utils/math.h
 		src/utils/random.h
+		src/utils/file.h
         src/camera.h
         src/triangle.h
         src/utils/image.h
@@ -68,7 +71,8 @@ set(HEADER_FILES
         src/material.h
         src/sphere.h
         src/plane.h
-        src/pointlight.h)
+        src/pointlight.h
+		src/object.h)
 
 if (UNIX)
 	find_package(OpenMP)

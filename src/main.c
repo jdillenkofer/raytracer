@@ -4,6 +4,7 @@
 #include "camera.h"
 #include "scene.h"
 #include "raytracer.h"
+#include "object.h"
 
 #include <SDL2/SDL.h>
 #include <omp.h>
@@ -124,6 +125,9 @@ int main(int argc, char* argv[]) {
     scene.triangles = triangles;
     scene.pointLightCount = 1;
     scene.pointLights = pointLights;
+
+    Object* teapot = object_loadFromFile("teapot.obj");
+    object_destroy(teapot);
 
 	double rayColorContribution = 1.0f / (double) raysPerPixel;
 
