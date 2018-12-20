@@ -8,6 +8,8 @@
 #include "utils/file.h"
 #include "vertextable.h"
 
+#define DEFAULT_CAPACITY 200
+
 static void object_skipToNextWhitespace(char* data, size_t* offset) {
     char* dataPtr = &data[*offset];
     while(*dataPtr != '\0' && (*dataPtr != '\n' && *dataPtr != ' ' && *dataPtr != '\t')) {
@@ -85,7 +87,7 @@ static void object_parseVertex(VertexTable* vertexTable, char* data, size_t* off
 static Object* object_createObject(void) {
     Object* object = malloc(sizeof(Object));
     object->triangleCount = 0;
-    object->capacity = 200;
+    object->capacity = DEFAULT_CAPACITY;
     object->triangles= malloc(sizeof(Triangle) * object->capacity);
     return object;
 }

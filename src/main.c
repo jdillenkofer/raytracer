@@ -48,90 +48,106 @@ int main(int argc, char* argv[]) {
     Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
     Image* image = image_create(width, height);
 
-    Material materials[5] = {0};
-    materials[0].color = (Vec3) { 0.0f, 0.0f, 0.0f };
-	materials[0].reflectionIndex = 0.0f;
-	materials[0].refractionIndex = 0.0f;
-    
-	materials[1].color = (Vec3) { 0.4f, 0.4f, 0.4f };
-	materials[1].reflectionIndex = 0.0f;
-	materials[1].refractionIndex = 0.0f;
+    Scene* scene = scene_create();
+    scene->camera = camera;
 
-    materials[2].color = (Vec3) { 1.0f, 0.0f, 0.0f };
-	materials[2].reflectionIndex = 1.0f;
-	materials[2].refractionIndex = 0.0f;
+    // background has to be added first
+    Material background = {0};
+    background.color = (Vec3) { 0.0f, 0.0f, 0.0f };
+    background.reflectionIndex = 0.0f;
+    background.refractionIndex = 0.0f;
+    scene_addMaterial(scene, background);
 
-    materials[3].color = (Vec3) { 1.0f, 1.0f, 1.0f };
-	materials[3].reflectionIndex = 1.0f;
-	materials[3].refractionIndex = 0.0f;
+    Material grey = {0};
+    grey.color = (Vec3) { 0.4f, 0.4f, 0.4f };
+    grey.reflectionIndex = 0.0f;
+    uint32_t greyId = scene_addMaterial(scene, grey);
 
-    materials[4].color = (Vec3) { 1.0f, 1.0f, 1.0f };
-	materials[4].reflectionIndex = 1.0f;
-	materials[4].refractionIndex = 1.4f;
+    Material redMirror = {0};
+    redMirror.color = (Vec3) { 1.0f, 0.0f, 0.0f };
+    redMirror.reflectionIndex = 1.0f;
+    uint32_t redMirrorId = scene_addMaterial(scene, redMirror);
 
-    Plane planes[5] = {0};
-    // floor
-    planes[0].materialIndex = 1;
-    planes[0].normal = (Vec3) { 0.0f, 1.0f, 0.0f };
-    planes[0].distanceFromOrigin = 0;
-    // front wall
-    planes[1].materialIndex = 1;
-    planes[1].normal = (Vec3) { 0.0f, 0.0f, 1.0f };
-    planes[1].distanceFromOrigin = 8;
-    // back wall
-	planes[2].materialIndex = 1;
-	planes[2].normal = (Vec3) { 0.0f, 0.0f, 1.0f };
-	planes[2].distanceFromOrigin = -40;
-	// left wall
-	planes[3].materialIndex = 1;
-	planes[3].normal = (Vec3) { 1.0f, 0.0f, 0.0f };
-	planes[3].distanceFromOrigin = -8;
-	// right wall
-	planes[4].materialIndex = 1;
-	planes[4].normal = (Vec3) { 1.0f, 0.0f, 0.0f };
-	planes[4].distanceFromOrigin = 8;
+    Material mirror = {0};
+    mirror.color = (Vec3) { 1.0f, 1.0f, 1.0f };
+    mirror.reflectionIndex = 1.0f;
+    uint32_t mirrorId = scene_addMaterial(scene, mirror);
 
-    Sphere spheres[3] = {0};
-    spheres[0].materialIndex = 2;
-    spheres[0].position = (Vec3) { -3.0f, 1.0f, 0.0f };
-    spheres[0].radius = 1;
-    spheres[1].materialIndex = 3;
-    spheres[1].position = (Vec3) { 0.0f, 1.5f, 0.0f };
-    spheres[1].radius = 1;
-    spheres[2].materialIndex = 4;
-    spheres[2].position = (Vec3) { 3.0f, 1.0f, 3.0f };
-    spheres[2].radius = 1;
+    Material glass = {0};
+    glass.color = (Vec3) { 1.0f, 1.0f, 1.0f };
+    glass.reflectionIndex = 1.0f;
+    glass.refractionIndex = 1.4f;
+    uint32_t glassId = scene_addMaterial(scene, glass);
 
-    Triangle triangles[1] = {0};
-    triangles[0].materialIndex = 2;
-    triangles[0].v0 = (Vec3) { 2.0f, 0.0f, 0.0f };
-    triangles[0].v1 = (Vec3) { 4.0f, 0.0f, 0.0f };
-    triangles[0].v2 = (Vec3) { 3.0f, 1.0f, 0.0f };
+    Plane floor = {0};
+    floor.materialIndex = greyId;
+    floor.normal = (Vec3) { 0.0f, 1.0f, 0.0f };
+    floor.distanceFromOrigin = 0;
+    scene_addPlane(scene, floor);
 
-    PointLight pointLights[1] = {0};
-    pointLights[0].position = (Vec3) { -3.0f, 40.0f, 30.0f };
-    pointLights[0].emissionColor = (Vec3) { 1.0f, 1.0f, 1.0f };
-    pointLights[0].strength = 20000.0f;
+    Plane front = {0};
+    front.materialIndex = greyId;
+    front.normal = (Vec3) { 0.0f, 0.0f, 1.0f };
+    front.distanceFromOrigin = 8;
+    scene_addPlane(scene, front);
 
-    /*
+    Plane back = {0};
+    back.materialIndex = greyId;
+    back.normal = (Vec3) { 0.0f, 0.0f, 1.0f };
+    back.distanceFromOrigin = -40;
+    scene_addPlane(scene, back);
+
+    Plane left = {0};
+    left.materialIndex = greyId;
+    left.normal = (Vec3) { 1.0f, 0.0f, 0.0f };
+    left.distanceFromOrigin = -8;
+    scene_addPlane(scene, left);
+
+    Plane right = {0};
+    right.materialIndex = greyId;
+    right.normal = (Vec3) { 1.0f, 0.0f, 0.0f };
+    right.distanceFromOrigin = 8;
+    scene_addPlane(scene, right);
+
+    Sphere redLeftSphere = {0};
+    redLeftSphere.materialIndex = redMirrorId;
+    redLeftSphere.position = (Vec3) { -3.0f, 1.0f, 0.0f };
+    redLeftSphere.radius = 1;
+    scene_addSphere(scene, redLeftSphere);
+
+    Sphere mirrorSphere = {0};
+    mirrorSphere.materialIndex = mirrorId;
+    mirrorSphere.position = (Vec3) { 0.0f, 1.5f, 0.0f };
+    mirrorSphere.radius = 1;
+    scene_addSphere(scene, mirrorSphere);
+
+    Sphere glassSphere = {0};
+    glassSphere.materialIndex = glassId;
+    glassSphere.position = (Vec3) { 3.0f, 1.0f, 3.0f };
+    glassSphere.radius = 1;
+    scene_addSphere(scene, glassSphere);
+
+    Triangle triangle = {0};
+    triangle.materialIndex = redMirrorId;
+    triangle.v0 = (Vec3) { 2.0f, 0.0f, 0.0f };
+    triangle.v1 = (Vec3) { 4.0f, 0.0f, 0.0f };
+    triangle.v2 = (Vec3) { 3.0f, 1.0f, 0.0f };
+    scene_addTriangle(scene, triangle);
+
+    PointLight pointLight = {0};
+    pointLight.position = (Vec3) { -3.0f, 40.0f, 30.0f };
+    pointLight.emissionColor = (Vec3) { 1.0f, 1.0f, 1.0f };
+    pointLight.strength = 20000.0f;
+    scene_addPointLight(scene, pointLight);
+
     Object* teapot = object_loadFromFile("teapot.obj");
     object_scale(teapot, 0.01);
     object_translate(teapot, (Vec3) { 3.0f, 1.0f, 5.0f });
-    object_materialIndex(teapot, 2);
-    */
+    object_materialIndex(teapot, redMirrorId);
+    scene_addObject(scene, *teapot);
+    object_destroy(teapot);
 
-    Scene scene = {0};
-    scene.camera = camera;
-    scene.materialCount = 5;
-    scene.materials = materials;
-    scene.planeCount = 5;
-    scene.planes = planes;
-    scene.sphereCount = 3;
-    scene.spheres = spheres;
-    scene.triangleCount = 1;
-    scene.triangles = triangles;
-    scene.pointLightCount = 1;
-    scene.pointLights = pointLights;
+    scene_shrink_to_fit(scene);
 
 	double rayColorContribution = 1.0f / (double) raysPerPixel;
 
@@ -187,7 +203,7 @@ int main(int argc, char* argv[]) {
                             vec3_norm(vec3_sub(renderTargetPos, camera->position))
                     };
 
-                    Vec3 currentRayColor = raytracer_raycast(&scene, &ray, 0, maxRecursionDepth);
+                    Vec3 currentRayColor = raytracer_raycast(scene, &ray, 0, maxRecursionDepth);
                     color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
                 }
             }
@@ -216,8 +232,7 @@ int main(int argc, char* argv[]) {
     SDL_DestroyWindow(window);
     SDL_Quit();
 
-    // object_destroy(teapot);
     image_destroy(image);
-    camera_destroy(camera);
+    scene_destroy(scene);
     return 0;
 }
