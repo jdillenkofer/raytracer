@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
                             vec3_norm(vec3_sub(renderTargetPos, camera->position))
                     };
 
-                    Vec3 currentRayColor = raytracer_raycast(scene, &ray, 0, maxRecursionDepth);
+                    Vec3 currentRayColor = raytracer_raycast(scene, &ray, maxRecursionDepth);
                     color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
                 }
             }

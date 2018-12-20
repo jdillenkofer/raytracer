@@ -208,7 +208,7 @@ static void raytracer_calcClosestTriangleIntersect(Scene* scene, Ray* ray, doubl
     }
 }
 
-Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, uint32_t maxRecursionDepth) {
+static Vec3 raytracer_raycast_helper(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, uint32_t maxRecursionDepth) {
     Vec3 outColor = (Vec3) {0};
 
     if (recursionDepth >= maxRecursionDepth) {
@@ -244,7 +244,7 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, u
                 refractedRay.direction = raytracer_refract(primaryRay->direction, intersectionNormal, hitMaterial->refractionIndex);
                 raytracer_moveRayOutOfObject(&refractedRay);
 
-                refractionColor = raytracer_raycast(scene, &refractedRay, recursionDepth + 1, maxRecursionDepth);
+                refractionColor = raytracer_raycast_helper(scene, &refractedRay, recursionDepth + 1, maxRecursionDepth);
             }
 
             Ray reflectedRay;
@@ -252,7 +252,7 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, u
             reflectedRay.direction = vec3_reflect(primaryRay->direction, intersectionNormal);
             raytracer_moveRayOutOfObject(&reflectedRay);
 
-            Vec3 reflectionColor = raytracer_raycast(scene, &reflectedRay, recursionDepth + 1, maxRecursionDepth);
+            Vec3 reflectionColor = raytracer_raycast_helper(scene, &reflectedRay, recursionDepth + 1, maxRecursionDepth);
 
             // mix the two
             outColor = vec3_add(outColor, vec3_add(vec3_mul(reflectionColor, kr), vec3_mul(refractionColor, (1 - kr))));
@@ -265,7 +265,7 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, u
             reflectedRay.direction = vec3_reflect(primaryRay->direction, intersectionNormal);
             raytracer_moveRayOutOfObject(&reflectedRay);
 
-			Vec3 reflectionColor = raytracer_raycast(scene, &reflectedRay, recursionDepth + 1, maxRecursionDepth);
+			Vec3 reflectionColor = raytracer_raycast_helper(scene, &reflectedRay, recursionDepth + 1, maxRecursionDepth);
 
 			outColor = vec3_add(outColor, vec3_mul(reflectionColor, hitMaterial->reflectionIndex));
 		}
@@ -311,4 +311,8 @@ Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t recursionDepth, u
         outColor = vec3_hadamard(outColor, hitMaterial->color);
     }
     return outColor;
+}
+
+Vec3 raytracer_raycast(Scene* scene, Ray* primaryRay, uint32_t maxRecursionDepth) {
+    return raytracer_raycast_helper(scene, primaryRay, 0, maxRecursionDepth);
 }
