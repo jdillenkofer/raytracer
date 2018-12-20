@@ -80,6 +80,10 @@ int main(int argc, char* argv[]) {
         glass.refractionIndex = 1.4f;
         uint32_t glassId = scene_addMaterial(scene, glass);
 
+        Material yellow = {0};
+        yellow.color = (Vec3) { 1.0f, 0.6549f, 0.1019f };
+        uint32_t yellowId = scene_addMaterial(scene, yellow);
+
         Plane floor = {0};
         floor.materialIndex = greyId;
         floor.normal = (Vec3) { 0.0f, 1.0f, 0.0f };
@@ -141,12 +145,34 @@ int main(int argc, char* argv[]) {
         pointLight.strength = 20000.0f;
         scene_addPointLight(scene, pointLight);
 
+/*
         Object* teapot = object_loadFromFile("teapot.obj");
         object_scale(teapot, 0.01f);
         object_translate(teapot, (Vec3) { 3.0f, 1.0f, 5.0f });
         object_materialIndex(teapot, redMirrorId);
         scene_addObject(scene, *teapot);
         object_destroy(teapot);
+
+        Object* cube = object_loadFromFile("cube.obj");
+        object_translate(cube, (Vec3) { -3.0f, 1.0f, 5.0f });
+        object_materialIndex(cube, mirrorId);
+        scene_addObject(scene, *cube);
+        object_destroy(cube);
+
+        Object* airboat = object_loadFromFile("airboat.obj");
+        object_scale(airboat, 0.3f);
+        object_translate(airboat, (Vec3) { 0.0f, 1.0f, 5.0f });
+        object_materialIndex(airboat, yellowId);
+        scene_addObject(scene, *airboat);
+        object_destroy(airboat);
+
+        Object* cessna = object_loadFromFile("cessna.obj");
+        object_scale(cessna, 0.08f);
+        object_translate(cessna, (Vec3) { 0.0f, 1.0f, 5.0f });
+        object_materialIndex(cessna, yellowId);
+        scene_addObject(scene, *cessna);
+        object_destroy(cessna);
+*/
 
         scene_shrinkToFit(scene);
     }
@@ -186,7 +212,7 @@ int main(int argc, char* argv[]) {
         float PosY = -1.0f + 2.0f * ((float)y / (camera->height));
 #ifdef OPENMP
     #ifndef _WINDOWS
-            #pragma omp parallel for
+            #pragma omp parallel for schedule(dynamic)
     #endif
 #endif
         for (uint32_t x = 0; x < width; x++) {

@@ -36,6 +36,10 @@ static bool object_skipToNextLine(char* data, size_t* offset) {
     return !isEndOfStr;
 }
 
+static bool object_atEndOfLine(char* data, size_t* offset) {
+    return data[*offset] == '\n';
+}
+
 #define LOCAL_NUM_BUFFERSIZE 255
 static float object_getFloat(char *data, size_t *offset) {
     static char buff[LOCAL_NUM_BUFFERSIZE];
@@ -105,22 +109,27 @@ static void object_parseFace(Object* object, VertexTable* vertexTable, char* dat
     (*offset)++;
     object_skipWhitespace(data, offset);
     uint32_t v0Id = object_getInt(data, offset);
-    object_skipToNextWhitespace(data, offset);
-    object_skipWhitespace(data, offset);
-    uint32_t v1Id = object_getInt(data, offset);
-    object_skipToNextWhitespace(data, offset);
-    object_skipWhitespace(data, offset);
-    uint32_t v2Id = object_getInt(data, offset);
-    object_skipToNextWhitespace(data, offset);
     Vec3 v0 = vertextable_getVertexById(vertexTable, v0Id);
-    Vec3 v1 = vertextable_getVertexById(vertexTable, v1Id);
-    Vec3 v2 = vertextable_getVertexById(vertexTable, v2Id);
-    Triangle triangle;
-    triangle.v0 = v0;
-    triangle.v1 = v1;
-    triangle.v2 = v2;
-    triangle.materialIndex = 0;
-    object_addTriangle(object, triangle);
+    object_skipToNextWhitespace(data, offset);
+
+    object_skipWhitespace(data, offset);
+    uint32_t prevId = object_getInt(data, offset);
+    Vec3 prevVertex = vertextable_getVertexById(vertexTable, prevId);
+    object_skipToNextWhitespace(data, offset);
+
+    while (!object_atEndOfLine(data, offset)) {
+        object_skipWhitespace(data, offset);
+        uint32_t v2Id = object_getInt(data, offset);
+        object_skipToNextWhitespace(data, offset);
+        Vec3 v2 = vertextable_getVertexById(vertexTable, v2Id);
+        Triangle triangle;
+        triangle.v0 = v0;
+        triangle.v1 = prevVertex;
+        triangle.v2 = v2;
+        triangle.materialIndex = 0;
+        object_addTriangle(object, triangle);
+        prevVertex = v2;
+    }
 }
 
 Object* object_loadFromFile(const char* filepath) {
