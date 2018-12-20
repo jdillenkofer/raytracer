@@ -12,7 +12,7 @@ typedef struct {
 } Object;
 
 Object* object_loadFromFile(const char* filepath);
-void object_scale(Object* object, double factor);
+void object_scale(Object* object, float factor);
 void object_translate(Object* object, Vec3 translation);
 void object_materialIndex(Object* object, uint32_t materialIndex);
 void object_destroy(Object* object);

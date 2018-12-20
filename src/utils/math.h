@@ -6,9 +6,9 @@
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
-#define PI M_PI
+#define PI ((float)(M_PI))
 
-double math_clamp(double in, double min, double max);
-double math_deg2rad(double deg);
-double math_rad2deg(double rad);
+float math_clamp(float in, float min, float max);
+float math_deg2rad(float deg);
+float math_rad2deg(float rad);
 #endif //RAYTRACER_MATH_H

@@ -8,7 +8,7 @@
 typedef struct {
     uint32_t materialIndex;
     Vec3 position;
-    double radius;
+    float radius;
 } Sphere;
 
 #endif //RAYTRACER_SPHERE_H

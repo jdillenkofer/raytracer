@@ -37,7 +37,7 @@ static bool object_skipToNextLine(char* data, size_t* offset) {
 }
 
 #define LOCAL_NUM_BUFFERSIZE 255
-static double object_getDouble(char *data, size_t *offset) {
+static float object_getFloat(char *data, size_t *offset) {
     static char buff[LOCAL_NUM_BUFFERSIZE];
     size_t startOffset = *offset;
     char* dataPtr = &data[*offset];
@@ -52,7 +52,7 @@ static double object_getDouble(char *data, size_t *offset) {
     }
     memcpy(buff, &data[startOffset], length);
     buff[length] = '\0';
-    return atof(buff);
+    return (float) atof(buff);
 }
 
 static uint32_t object_getInt(char *data, size_t *offset) {
@@ -76,11 +76,11 @@ static void object_parseVertex(VertexTable* vertexTable, char* data, size_t* off
     // skip v
     (*offset)++;
     object_skipWhitespace(data, offset);
-    vertex.x = object_getDouble(data, offset);
+    vertex.x = object_getFloat(data, offset);
     object_skipWhitespace(data, offset);
-    vertex.y = object_getDouble(data, offset);
+    vertex.y = object_getFloat(data, offset);
     object_skipWhitespace(data, offset);
-    vertex.z = object_getDouble(data, offset);
+    vertex.z = object_getFloat(data, offset);
     vertextable_addVertex(vertexTable, vertex);
 }
 
@@ -160,7 +160,7 @@ Object* object_loadFromFile(const char* filepath) {
     return object;
 }
 
-void object_scale(Object* object, double factor) {
+void object_scale(Object* object, float factor) {
     for (uint32_t i = 0; i < object->triangleCount; i++) {
         Triangle* triangle = &object->triangles[i];
         triangle->v0 = vec3_mul(triangle->v0, factor);

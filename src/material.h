@@ -4,8 +4,8 @@
 #include "utils/vec3.h"
 
 typedef struct {
-	double reflectionIndex;
-	double refractionIndex;
+	float reflectionIndex;
+	float refractionIndex;
     Vec3 color;
 } Material;
 

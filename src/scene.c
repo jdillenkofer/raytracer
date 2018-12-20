@@ -78,7 +78,7 @@ void scene_addPointLight(Scene* scene, PointLight pointLight) {
     scene->pointLights[scene->pointLightCount++] = pointLight;
 }
 
-void scene_shrink_to_fit(Scene* scene) {
+void scene_shrinkToFit(Scene *scene) {
     if (scene->materialCapacity > scene->materialCount) {
         scene->materials = realloc(scene->materials, sizeof(Material) * scene->materialCount);
         scene->materialCapacity = scene->materialCount;

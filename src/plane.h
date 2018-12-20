@@ -8,7 +8,7 @@
 typedef struct {
     uint32_t materialIndex;
     Vec3 normal;
-    double distanceFromOrigin;
+    float distanceFromOrigin;
 } Plane;
 
 #endif //RAYTRACER_PLANE_H

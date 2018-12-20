@@ -43,7 +43,7 @@ void scene_addSphere(Scene* scene, Sphere sphere);
 void scene_addTriangle(Scene* scene, Triangle triangle);
 void scene_addObject(Scene* scene, Object object);
 void scene_addPointLight(Scene* scene, PointLight pointLight);
-void scene_shrink_to_fit(Scene* scene);
+void scene_shrinkToFit(Scene *scene);
 void scene_destroy(Scene* scene);
 
 #endif //RAYTRACER_SCENE_H

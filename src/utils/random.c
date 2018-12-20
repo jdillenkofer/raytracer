@@ -2,10 +2,10 @@
 
 #include <stdlib.h>
 
-double random_unilateral() {
-    return (double) rand() / (double) RAND_MAX;
+float random_unilateral() {
+    return (float) rand() / (float) RAND_MAX;
 }
 
-double random_bilateral() {
+float random_bilateral() {
     return -1.0f + 2.0f * random_unilateral();
 }

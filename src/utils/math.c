@@ -1,13 +1,13 @@
 #include "math.h"
 
-double math_clamp(double in, double min, double max) {
+float math_clamp(float in, float min, float max) {
     return in < min ? min : (in > max ? max : in);
 }
 
-double math_deg2rad(double deg) {
+float math_deg2rad(float deg) {
     return deg * (PI/180.f);
 }
 
-double math_rad2deg(double rad) {
+float math_rad2deg(float rad) {
     return rad * (180.f/PI);
 }

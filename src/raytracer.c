@@ -6,56 +6,56 @@
 
 #include "utils/math.h"
 
-static Vec3 raytracer_refract(Vec3 direction, Vec3 normal, double refractionIndex) {
-    double cosi = math_clamp(-1, 1, vec3_dot(direction, normal));
+static Vec3 raytracer_refract(Vec3 direction, Vec3 normal, float refractionIndex) {
+    float cosi = math_clamp(-1, 1, vec3_dot(direction, normal));
     // refractionIndex of air is ~ 1
-    double etai = 1; double etat = refractionIndex;
+    float etai = 1; float etat = refractionIndex;
     Vec3 n = normal;
     if (cosi < 0) {
         cosi = -cosi;
     } else {
-        double tmp = etai;
+        float tmp = etai;
         etai = etat;
         etat = tmp;
         n = vec3_mul(n, -1);
     }
-    double eta = etai / etat;
-    double k = 1 - eta * eta * (1 - cosi * cosi);
+    float eta = etai / etat;
+    float k = 1 - eta * eta * (1 - cosi * cosi);
 
     Vec3 refractedDir;
     if (k < 0) {
         refractedDir = (Vec3) {0};
     } else {
-        refractedDir = vec3_norm(vec3_add(vec3_mul(direction, eta), vec3_mul(n, eta * cosi - sqrt(k))));
+        refractedDir = vec3_norm(vec3_add(vec3_mul(direction, eta), vec3_mul(n, eta * cosi - sqrtf(k))));
     }
     return refractedDir;
 }
 
-static double raytracer_fresnel(Vec3 dir, Vec3 normal, double refractionIndex) {
-    double kr;
-    double cosi = math_clamp(-1, 1, vec3_dot(dir, normal));
-    double etai = 1;
-    double etat = refractionIndex;
+static float raytracer_fresnel(Vec3 dir, Vec3 normal, float refractionIndex) {
+    float kr;
+    float cosi = math_clamp(-1, 1, vec3_dot(dir, normal));
+    float etai = 1;
+    float etat = refractionIndex;
     if (cosi > 0) {
-        double tmp = etat;
+        float tmp = etat;
         etat = etai;
         etai = tmp;
     }
     // Snell's law
-    double sint = etai / etat * sqrtf(MAX(0.f, 1.0f - cosi * cosi));
+    float sint = etai / etat * sqrtf(MAX(0.f, 1.0f - cosi * cosi));
     if (sint >= 1) {
         kr = 1;
     } else {
-        double cost = sqrtf(MAX(0.f, 1.0f - sint * sint));
-        cosi = fabs(cosi);
-        double Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
-        double Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
+        float cost = sqrtf(MAX(0.f, 1.0f - sint * sint));
+        cosi = fabsf(cosi);
+        float Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
+        float Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
         kr = (Rs * Rs + Rp * Rp) / 2;
     }
     return kr;
 }
 
-static Vec3 raytracer_calculateHitpoint(Ray* ray, double hitDistance) {
+static Vec3 raytracer_calculateHitpoint(Ray* ray, float hitDistance) {
     return vec3_add(ray->origin, vec3_mul(ray->direction, hitDistance));
 }
 
@@ -67,14 +67,14 @@ static void raytracer_moveRayOutOfObject(Ray* ray) {
     ray->origin = vec3_add(ray->origin, vec3_mul(ray->direction, 1.0f/1000.0f));
 }
 
-static bool raytracer_intersectPlane(Plane* plane, Ray* ray, double* hitDistance, Vec3* intersectionNormal) {
+static bool raytracer_intersectPlane(Plane* plane, Ray* ray, float* hitDistance, Vec3* intersectionNormal) {
         // We use the "Hesse normal form":
         //     normal * p - distanceFromOrigin = 0
         // to describe our planes
-        double denominator = vec3_dot(plane->normal, ray->direction);
+        float denominator = vec3_dot(plane->normal, ray->direction);
         if ((denominator < -EPSILON) || (denominator > EPSILON)) {
-            double cosAngle = vec3_dot(plane->normal, ray->origin);
-            double t = (-plane->distanceFromOrigin - cosAngle) / denominator;
+            float cosAngle = vec3_dot(plane->normal, ray->origin);
+            float t = (-plane->distanceFromOrigin - cosAngle) / denominator;
             // only hit objects in front of us
             if (t > 0) {
                 *intersectionNormal = plane->normal;
@@ -85,22 +85,22 @@ static bool raytracer_intersectPlane(Plane* plane, Ray* ray, double* hitDistance
         return false;
 }
 
-static bool raytracer_intersectSphere(Sphere* sphere, Ray* ray, double* hitDistance, Vec3* intersectionNormal) {
+static bool raytracer_intersectSphere(Sphere* sphere, Ray* ray, float* hitDistance, Vec3* intersectionNormal) {
         Vec3 sphereRelativeOrigin = vec3_sub(ray->origin, sphere->position);
 
         // Mitternachtsformel
-        double a = vec3_dot(ray->direction, ray->direction);
-        double b = 2.0f * vec3_dot(ray->direction, sphereRelativeOrigin);
-        double c = vec3_dot(sphereRelativeOrigin, sphereRelativeOrigin) - sphere->radius * sphere->radius;
+        float a = vec3_dot(ray->direction, ray->direction);
+        float b = 2.0f * vec3_dot(ray->direction, sphereRelativeOrigin);
+        float c = vec3_dot(sphereRelativeOrigin, sphereRelativeOrigin) - sphere->radius * sphere->radius;
 
-        double denominator = 2.0f * a;
-        double squareRootTerm = sqrt(b*b - 4.0f * a * c);
+        float denominator = 2.0f * a;
+        float squareRootTerm = sqrtf(b*b - 4.0f * a * c);
 
         if (squareRootTerm > EPSILON) {
-            double tpos = (-b + squareRootTerm) / denominator;
-            double tneg = (-b - squareRootTerm) / denominator;
+            float tpos = (-b + squareRootTerm) / denominator;
+            float tneg = (-b - squareRootTerm) / denominator;
 
-            double t = tpos;
+            float t = tpos;
             // only hit objects in front of us,
             if ((tneg > 0) && (tneg < tpos)) {
                 t = tneg;
@@ -115,17 +115,17 @@ static bool raytracer_intersectSphere(Sphere* sphere, Ray* ray, double* hitDista
 		return false;
 }
 
-static bool raytracer_intersectTriangle(Triangle* triangle, Ray* ray, double* hitDistance, Vec3* intersectionNormal) {
+static bool raytracer_intersectTriangle(Triangle* triangle, Ray* ray, float* hitDistance, Vec3* intersectionNormal) {
     Vec3 v0v1 = vec3_sub(triangle->v1, triangle->v0);
     Vec3 v0v2 = vec3_sub(triangle->v2, triangle->v0);
     Vec3 normal = vec3_norm(vec3_cross(v0v1, v0v2));
-    double normalDotRayDir = vec3_dot(normal, ray->direction);
+    float normalDotRayDir = vec3_dot(normal, ray->direction);
     if (fabs(normalDotRayDir) < EPSILON) {
         return false;
     }
 
-    double d = vec3_dot(normal, triangle->v0);
-	double t = -(vec3_dot(normal, ray->origin) - d) / normalDotRayDir;
+    float d = vec3_dot(normal, triangle->v0);
+	float t = -(vec3_dot(normal, ray->origin) - d) / normalDotRayDir;
     if (t > 0) {
         Vec3 hitPoint = raytracer_calculateHitpoint(ray, t);
 
@@ -160,11 +160,11 @@ static bool raytracer_intersectTriangle(Triangle* triangle, Ray* ray, double* hi
     return false;
 }
 
-static void raytracer_calcClosestPlaneIntersect(Scene* scene, Ray* ray, double* minHitDistance, Vec3* intersectionNormal,
+static void raytracer_calcClosestPlaneIntersect(Scene* scene, Ray* ray, float* minHitDistance, Vec3* intersectionNormal,
                                                 uint32_t* hitMaterialIndex) {
     for (uint32_t i = 0; i < scene->planeCount; i++) {
         Plane* plane = &scene->planes[i];
-        double planeHitDistance = DBL_MAX;
+        float planeHitDistance = FLT_MAX;
         Vec3 planeIntersectionNormal = {0};
         if (raytracer_intersectPlane(plane, ray, &planeHitDistance, &planeIntersectionNormal)) {
             if (planeHitDistance < *minHitDistance) {
@@ -176,11 +176,11 @@ static void raytracer_calcClosestPlaneIntersect(Scene* scene, Ray* ray, double* 
     }
 }
 
-static void raytracer_calcClosestSphereIntersect(Scene* scene, Ray *ray, double* minHitDistance, Vec3* intersectionNormal,
+static void raytracer_calcClosestSphereIntersect(Scene* scene, Ray *ray, float* minHitDistance, Vec3* intersectionNormal,
                                                  uint32_t* hitMaterialIndex) {
     for (uint32_t i = 0; i < scene->sphereCount; i++) {
         Sphere* sphere = &scene->spheres[i];
-        double sphereHitDistance = DBL_MAX;
+        float sphereHitDistance = FLT_MAX;
         Vec3 sphereIntersectionNormal = {0};
         if (raytracer_intersectSphere(sphere, ray, &sphereHitDistance, &sphereIntersectionNormal)) {
             if (sphereHitDistance < *minHitDistance) {
@@ -192,11 +192,11 @@ static void raytracer_calcClosestSphereIntersect(Scene* scene, Ray *ray, double*
     }
 }
 
-static void raytracer_calcClosestTriangleIntersect(Scene* scene, Ray* ray, double* minHitDistance, Vec3* intersectionNormal,
+static void raytracer_calcClosestTriangleIntersect(Scene* scene, Ray* ray, float* minHitDistance, Vec3* intersectionNormal,
                                                    uint32_t* hitMaterialIndex) {
     for (uint32_t i = 0; i < scene->triangleCount; i++) {
         Triangle* triangle = &scene->triangles[i];
-        double triangleHitDistance = DBL_MAX;
+        float triangleHitDistance = FLT_MAX;
         Vec3 triangleIntersectionNormal = {0};
         if (raytracer_intersectTriangle(triangle, ray, &triangleHitDistance, &triangleIntersectionNormal)) {
             if (triangleHitDistance < *minHitDistance) {
@@ -215,7 +215,7 @@ static Vec3 raytracer_raycast_helper(Scene* scene, Ray* primaryRay, uint32_t rec
         return outColor;
     }
 
-    double minHitDistance = DBL_MAX;
+    float minHitDistance = FLT_MAX;
     uint32_t hitMaterialIndex = 0;
 
     Vec3 intersectionNormal = {0};
@@ -233,7 +233,7 @@ static Vec3 raytracer_raycast_helper(Scene* scene, Ray* primaryRay, uint32_t rec
 
 		// REFLECTION AND REFRACTION
 		if (hitMaterial->refractionIndex > 0) {
-		    double kr = raytracer_fresnel(primaryRay->direction, intersectionNormal, hitMaterial->refractionIndex);
+		    float kr = raytracer_fresnel(primaryRay->direction, intersectionNormal, hitMaterial->refractionIndex);
 
             Vec3 refractionColor = {0};
 
@@ -277,31 +277,31 @@ static Vec3 raytracer_raycast_helper(Scene* scene, Ray* primaryRay, uint32_t rec
             Vec3 hitToLight = vec3_sub(pointLight->position, hitPoint);
             Vec3 randomOffset = vec3_norm((Vec3) { random_bilateral(), random_bilateral(), random_bilateral()});
             hitToLight = vec3_add(hitToLight, randomOffset);
-            double distanceToLight = vec3_length(hitToLight);
+            float distanceToLight = vec3_length(hitToLight);
 
             shadowRay.origin = hitPoint;
             shadowRay.direction = vec3_norm(hitToLight);
             raytracer_moveRayOutOfObject(&shadowRay);
 
             uint32_t shadowRayHitMaterialIndex = 0;
-            double closestHitDistance = DBL_MAX;
+            float closestHitDistance = FLT_MAX;
             Vec3 shadowRayIntersectionNormal = {0};
             raytracer_calcClosestPlaneIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
             raytracer_calcClosestSphereIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
             raytracer_calcClosestTriangleIntersect(scene, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
             if (distanceToLight < closestHitDistance) {
                 // we hit the light
-                double cosAngle = vec3_dot(shadowRay.direction, intersectionNormal);
+                float cosAngle = vec3_dot(shadowRay.direction, intersectionNormal);
                 cosAngle = math_clamp(cosAngle, 0.0f, 1.0f);
 
-                double lightStrength = (pointLight->strength/(4 * PI * distanceToLight * distanceToLight));
+                float lightStrength = (pointLight->strength/(4 * PI * distanceToLight * distanceToLight));
                 Vec3 diffuseLighting = vec3_mul(pointLight->emissionColor, cosAngle * lightStrength);
 
                 Vec3 toView = vec3_norm(vec3_sub(scene->camera->position, hitPoint));
                 Vec3 toLight = vec3_mul(shadowRay.direction, -1);
                 Vec3 reflectionVector = vec3_reflect(toLight, intersectionNormal);
                 cosAngle = vec3_dot(toView, reflectionVector);
-                cosAngle = pow(cosAngle, 64);
+                cosAngle = powf(cosAngle, 64);
 
                 Vec3 specularLighting = vec3_mul(pointLight->emissionColor, cosAngle * lightStrength);
 

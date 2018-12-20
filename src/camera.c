@@ -22,21 +22,21 @@ static void camera_setup(Camera *camera) {
     }
 
     // calculate Distance between RenderTarget and Eye
-    double diagonale = sqrt(
+    float diagonale = sqrtf(
             (camera->renderTargetWidth * camera->renderTargetWidth) +
             (camera->renderTargetHeight * camera->renderTargetHeight));
-    camera->renderTargetDistance = (diagonale * (2.0f*tan(math_deg2rad(camera->FOV)/2.0f)));
+    camera->renderTargetDistance = (diagonale * (2.0f*tanf(math_deg2rad(camera->FOV)/2.0f)));
 
     // centerPos on RenderTarget
     camera->renderTargetCenter = vec3_sub(camera->position, vec3_mul(camera->z, camera->renderTargetDistance));
 }
 
-Camera* camera_create(Vec3 position, Vec3 lookAt, uint32_t width, uint32_t height, double FOV) {
+Camera* camera_create(Vec3 position, Vec3 lookAt, uint32_t width, uint32_t height, float FOV) {
     Camera* camera = malloc(sizeof(Camera));
     camera->position = position;
     camera->width = width;
     camera->height = height;
-    camera->aspectRatio = (double) width/ (double)height;
+    camera->aspectRatio = (float) width/ (float)height;
     camera->lookAt = lookAt;
     camera->FOV = FOV;
     camera_setup(camera);
