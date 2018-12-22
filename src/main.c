@@ -5,51 +5,18 @@
 #include "scene.h"
 #include "raytracer.h"
 #include "object.h"
+#include "kernel.h"
 
 #include <SDL2/SDL.h>
-#include <omp.h>
 #include <utils/random.h>
 
-void handleEvents() {
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        switch(event.type) {
-            case SDL_QUIT:
-                SDL_Quit();
-                exit(0);
-            default:
-                break;
-        }
-    }
-}
-
-void renderImage(SDL_Renderer *renderer, Image *image) {
-    SDL_Surface* surface =
-            SDL_CreateRGBSurfaceFrom((void*)image->buffer, (int) image->width, (int) image->height, 32,
-                                     (int) (sizeof(uint32_t) * image->width), 0xFFu << 16, 0xFFu << 8, 0xFFu, 0xFFu << 24);
-    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
-    SDL_FreeSurface(surface);
-    SDL_RenderClear(renderer);
-    SDL_RenderCopy(renderer, texture, NULL, NULL);
-    SDL_DestroyTexture(texture);
-    SDL_RenderPresent(renderer);
-}
-
-int main(int argc, char* argv[]) {
-    (void) argc;
-    (void) argv;
-    Vec3 camera_pos = { 0.0f , 2.0f, 40.0f };
-    Vec3 lookAt = (Vec3) {0.0f, 0.0f, 0.0f};
-    uint32_t width = 1920;
-    uint32_t height = 1080;
-    float FOV = 110.0f;
-	uint32_t raysPerPixel = 1;
-	uint32_t maxRecursionDepth = 8;
-    Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
-    Image* image = image_create(width, height);
-
+Scene* initScene(uint32_t width, uint32_t height) {
     Scene* scene = scene_create();
     {
+        Vec3 camera_pos = { 0.0f , 2.0f, 40.0f };
+        Vec3 lookAt = (Vec3) {0.0f, 0.0f, 0.0f};
+        float FOV = 110.0f;
+        Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
         scene->camera = camera;
 
         // background has to be added first
@@ -173,9 +140,44 @@ int main(int argc, char* argv[]) {
         scene_addObject(scene, *cessna);
         object_destroy(cessna);
 */
-
         scene_shrinkToFit(scene);
     }
+    return scene;
+}
+
+void renderImage(SDL_Renderer *renderer, Image *image) {
+    SDL_Surface* surface =
+            SDL_CreateRGBSurfaceFrom((void*)image->buffer, (int) image->width, (int) image->height, 32,
+                                     (int) (sizeof(uint32_t) * image->width), 0xFFu << 16, 0xFFu << 8, 0xFFu, 0xFFu << 24);
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface);
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+    SDL_DestroyTexture(texture);
+    SDL_RenderPresent(renderer);
+}
+
+int main(int argc, char* argv[]) {
+    (void) argc;
+    (void) argv;
+
+    uint32_t width = 1920;
+    uint32_t height = 1080;
+	uint32_t raysPerPixel = 1;
+	uint32_t maxRecursionDepth = 5;
+
+    oclContext* openCLContext = initOpenClContext();
+
+    Image* image = image_create(width, height);
+    cl_mem dev_image = image_create_gpu(openCLContext, image);
+
+    Scene* scene = initScene(width, height);
+    cl_mem dev_camera = scene_create_gpu_camera(openCLContext, scene);
+    cl_mem dev_materials = scene_create_gpu_materials(openCLContext, scene);
+    cl_mem dev_planes = scene_create_gpu_planes(openCLContext, scene);
+    cl_mem dev_spheres = scene_create_gpu_spheres(openCLContext, scene);
+    cl_mem dev_triangles = scene_create_gpu_triangles(openCLContext, scene);
+    cl_mem dev_pointLights = scene_create_gpu_pointLights(openCLContext, scene);
 
 	float rayColorContribution = 1.0f / (float) raysPerPixel;
 
@@ -207,51 +209,62 @@ int main(int argc, char* argv[]) {
     }
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
+    cl_kernel raytrace_kernel = clCreateKernel(openCLContext->prog, "raytrace", &openCLContext->err);
+    if (openCLContext->err != CL_SUCCESS) {
+        printf("Couldn't create kernel raytrace.\n");
+        return 1;
+    }
 
-    for (uint32_t y = 0; y < height; y++) {
-        float PosY = -1.0f + 2.0f * ((float)y / (camera->height));
-#ifdef OPENMP
-    #ifndef _WINDOWS
-            #pragma omp parallel for schedule(dynamic)
-    #endif
-#endif
-        for (uint32_t x = 0; x < width; x++) {
-            float PosX = -1.0f + 2.0f * ((float)x / (camera->width));
+    openCLContext->err = clSetKernelArg(raytrace_kernel, 0, sizeof(cl_mem), &dev_camera);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 1, sizeof(cl_mem), &dev_materials);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 2, sizeof(uint32_t), &scene->materialCount);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 3, sizeof(cl_mem), &dev_planes);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 4, sizeof(uint32_t), &scene->planeCount);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 5, sizeof(cl_mem), &dev_spheres);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 6, sizeof(uint32_t), &scene->sphereCount);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 7, sizeof(cl_mem), &dev_triangles);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 8, sizeof(uint32_t), &scene->triangleCount);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 9, sizeof(cl_mem), &dev_pointLights);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 10, sizeof(uint32_t), &scene->pointLightCount);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 11, sizeof(cl_mem), &dev_image);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 12, sizeof(uint32_t), &maxRecursionDepth);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 13, sizeof(float), &rayColorContribution);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 14, sizeof(float), &deltaX);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 15, sizeof(float), &deltaY);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 16, sizeof(float), &pixelWidth);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 17, sizeof(float), &pixelHeight);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 18, sizeof(uint32_t), &raysPerWidthPixel);
+    openCLContext->err |= clSetKernelArg(raytrace_kernel, 19, sizeof(uint32_t), &raysPerHeightPixel);
+    if (openCLContext->err != CL_SUCCESS) {
+        printf("Couldn't set all kernel args correctly.\n");
+        return 1;
+    }
 
-			Vec3 color = {0};
-            for (uint32_t j = 0; j < raysPerHeightPixel; j++) {
-                for (uint32_t i = 0; i < raysPerWidthPixel; i++) {
-                    Vec3 OffsetY = vec3_mul(camera->y,
-                                            (PosY - pixelWidth + j * deltaY)*camera->renderTargetHeight/2.0f);
-                    Vec3 OffsetX = vec3_mul(camera->x,
-                                            (PosX - pixelHeight + i * deltaX)*camera->renderTargetWidth/2.0f);
-                    Vec3 renderTargetPos = vec3_sub(vec3_add(camera->renderTargetCenter, OffsetX), OffsetY);
-                    Ray ray = {
-                            camera->position,
-                            vec3_norm(vec3_sub(renderTargetPos, camera->position))
-                    };
+    const size_t threadsPerDim[2] = { width, height };
+    openCLContext->err = clEnqueueNDRangeKernel(openCLContext->command_queue, raytrace_kernel, 2, NULL, threadsPerDim, NULL, 0, NULL, NULL);
+    if (openCLContext->err != CL_SUCCESS) {
+        printf("Couldn't enqueue kernel.\n");
+        return 1;
+    }
 
-                    Vec3 currentRayColor = raytracer_raycast(scene, &ray, maxRecursionDepth);
-                    color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
-                }
+    // Copy back from device
+    clEnqueueReadBuffer(openCLContext->command_queue, dev_image, CL_TRUE, 0, sizeof(uint32_t) * image->width * image->height, image->buffer, 0, NULL, NULL);
+
+    renderImage(renderer, image);
+
+    // wait for quit event before quitting
+    bool running = true;
+    while(running) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            switch(event.type) {
+                case SDL_QUIT:
+                    running = false;
+                    break;
+                default:
+                    break;
             }
-
-            // currently values are clamped to [0,1]
-            // in the future we may return floats > 1.0
-            // and use hdr to map it back to the [0.0, 1.0] range after
-            // all pixels are calculated
-            // this would avoid that really bright areas look the "same"
-            color = vec3_clamp(color, 0.0f, 1.0f);
-
-			image->buffer[y*width + x] =
-				(0xFFu << 24) |
-				((uint32_t)(color.r * 255) << 16) |
-				((uint32_t)(color.g * 255) << 8) |
-				((uint32_t)(color.b * 255) << 0);
         }
-		printf("\rRaytracing %d%%", (uint32_t)(100 * ((float)(y) / (float)(height))));
-        handleEvents();
-        renderImage(renderer, image);
     }
 
     bitmap_save_image("test.bmp", image);
@@ -262,5 +275,13 @@ int main(int argc, char* argv[]) {
 
     image_destroy(image);
     scene_destroy(scene);
+    clReleaseKernel(raytrace_kernel);
+    clReleaseMemObject(dev_camera);
+    clReleaseMemObject(dev_materials);
+    clReleaseMemObject(dev_planes);
+    clReleaseMemObject(dev_spheres);
+    clReleaseMemObject(dev_triangles);
+    clReleaseMemObject(dev_pointLights);
+    destroyOpenClContext(openCLContext);
     return 0;
 }

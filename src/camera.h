@@ -15,6 +15,7 @@ typedef struct {
 } Camera;
 
 Camera* camera_create(Vec3 position, Vec3 lookAt, uint32_t width, uint32_t height, float FOV);
+void camera_setup(Camera *camera);
 void camera_destroy(Camera* camera);
 
 #endif //RAYTRACER_CAMERA_H

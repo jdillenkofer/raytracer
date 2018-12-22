@@ -28,11 +28,10 @@ float vec3_dot(Vec3 a, Vec3 b) {
 Vec3 vec3_cross(Vec3 a, Vec3 b) {
     ASSERT_VECTOR_VALUE_NOT_NAN(a);
     ASSERT_VECTOR_VALUE_NOT_NAN(b);
-    Vec3 result = {
-        a.y * b.z - a.z * b.y ,
-        a.z * b.x - a.x * b.z ,
-        a.x * b.y - a.y * b.x
-    };
+    Vec3 result;
+    result.x = a.y * b.z - a.z * b.y;
+    result.y = a.z * b.x - a.x * b.z;
+    result.z = a.x * b.y - a.y * b.x;
     return result;
 }
 
@@ -47,11 +46,10 @@ Vec3 vec3_clamp(Vec3 a, float min, float max) {
 Vec3 vec3_hadamard(Vec3 a, Vec3 b) {
     ASSERT_VECTOR_VALUE_NOT_NAN(a);
     ASSERT_VECTOR_VALUE_NOT_NAN(b);
-    Vec3 result = {
-            a.x * b.x,
-            a.y * b.y,
-            a.z * b.z
-    };
+    Vec3 result;
+    result.x = a.x * b.x;
+    result.y = a.y * b.y;
+    result.z = a.z * b.z;
     return result;
 }
 

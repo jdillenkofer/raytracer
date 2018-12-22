@@ -6,7 +6,7 @@
 #include "utils/math.h"
 
 // See: http://web.cse.ohio-state.edu/~shen.94/681/Site/Slides_files/basic_algo.pdf
-static void camera_setup(Camera *camera) {
+void camera_setup(Camera *camera) {
     // Setup Camera Coordinate System
     //
     camera->z = vec3_norm(vec3_sub(camera->position, camera->lookAt));

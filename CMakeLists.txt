@@ -74,8 +74,9 @@ set(HEADER_FILES
         src/plane.h
         src/pointlight.h
 		src/object.h
-		src/vertextable.h)
+		src/vertextable.h src/kernel.h)
 
+if(FALSE) # fake a block comment
 if (UNIX)
 	find_package(OpenMP)
 	if (OPENMP_FOUND)
@@ -84,6 +85,12 @@ if (UNIX)
 		set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
 	endif()
 endif(UNIX)
+endif()
+
+
+find_package(OpenCL REQUIRED)
+include_directories(${OpenCL_INCLUDE_DIRS})
+link_directories(${OpenCL_LIBRARY})
 
 add_executable(raytracer ${SOURCE_FILES} ${HEADER_FILES})
 
@@ -91,4 +98,4 @@ if (UNIX)
 	target_link_libraries(${EXECUTABLE_NAME} m)
 endif (UNIX)
 
-target_link_libraries(${EXECUTABLE_NAME} SDL2::SDL2)
+target_link_libraries(${EXECUTABLE_NAME} SDL2::SDL2 ${OpenCL_LIBRARY})
