@@ -8,8 +8,9 @@ set(EXECUTABLE_NAME
 		raytracer)
 
 # find SDL2
-find_package(SDL2 REQUIRED COMPONENTS SDL2::SDL2)
-include_directories(${SDL2_INCLUDE_DIRS})
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/modules")
+find_package(SDL2 REQUIRED COMPONENTS main)
+include_directories(${SDL2_INCLUDE_DIRS} ${SDL2main_INCLUDE_DIRS})
 
 
 if (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "CLANG"))
@@ -86,5 +87,12 @@ if (UNIX)
 	target_link_libraries(${EXECUTABLE_NAME} m)
 endif (UNIX)
 
-target_link_libraries(${EXECUTABLE_NAME} SDL2::SDL2 ${OpenCL_LIBRARY})
+target_link_libraries(${EXECUTABLE_NAME} ${SDL2_LIBS} ${OpenCL_LIBRARY})
 add_custom_command(TARGET raytracer POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/kernel.cl ${CMAKE_BINARY_DIR}/kernel.cl)
+# Copy SDL2 DLLs to output folder on Windows
+if(WIN32)
+    foreach(DLL ${SDL2_DLLS})
+        add_custom_command(TARGET raytracer POST_BUILD COMMAND
+            ${CMAKE_COMMAND} -E copy_if_different ${DLL} $<TARGET_FILE_DIR:raytracer>)
+    endforeach()
+endif()

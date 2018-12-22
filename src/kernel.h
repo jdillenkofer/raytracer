@@ -8,6 +8,7 @@
 #endif
 
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #include "utils/file.h"
@@ -26,7 +27,7 @@ oclContext* initOpenClContext() {
     clGetPlatformIDs(1, &context->plat, NULL);
     clGetDeviceIDs(context->plat, CL_DEVICE_TYPE_GPU, 1, &context->dev, NULL);
     context->ctx = clCreateContext(0, 1, &context->dev, NULL, NULL, &context->err);
-    context->command_queue = clCreateCommandQueueWithProperties(context->ctx, context->dev, 0, &context->err);
+    context->command_queue = clCreateCommandQueue(context->ctx, context->dev, 0, &context->err);
 
     size_t sourceSize = 0;
     char* source = file_readFile("kernel.cl", &sourceSize);
