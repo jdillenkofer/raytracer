@@ -107,9 +107,9 @@ Scene* initScene(uint32_t width, uint32_t height) {
         scene_addTriangle(scene, triangle);
 
         PointLight pointLight = {0};
-        pointLight.position = (Vec3) { -3.0f, 40.0f, 30.0f };
+        pointLight.position = (Vec3) { 0.0f, 10.0f, 10.0f };
         pointLight.emissionColor = (Vec3) { 1.0f, 1.0f, 1.0f };
-        pointLight.strength = 20000.0f;
+        pointLight.strength = 1500.0f;
         scene_addPointLight(scene, pointLight);
 
 /*
@@ -163,7 +163,7 @@ int main(int argc, char* argv[]) {
 
     uint32_t width = 1920;
     uint32_t height = 1080;
-	uint32_t raysPerPixel = 1;
+	uint32_t raysPerPixel = 64;
 	uint32_t maxRecursionDepth = 5;
 
     oclContext* openCLContext = initOpenClContext();

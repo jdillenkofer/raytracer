@@ -70,7 +70,7 @@ cl_mem image_create_gpu(oclContext* oclContext, Image* image) {
 }
 
 cl_mem scene_create_gpu_camera(oclContext* oclContext, Scene* scene) {
-    cl_mem dev_camera = (void*) clCreateBuffer(oclContext->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(Camera), scene->camera, &oclContext->err);
+    cl_mem dev_camera = (void*) clCreateBuffer(oclContext->ctx, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Camera), scene->camera, &oclContext->err);
     if (oclContext->err != CL_SUCCESS) {
         printf("Couldn't create dev_camera.\n");
         return NULL;
@@ -79,7 +79,7 @@ cl_mem scene_create_gpu_camera(oclContext* oclContext, Scene* scene) {
 }
 
 cl_mem scene_create_gpu_materials(oclContext* oclContext, Scene* scene) {
-    cl_mem dev_materials = (void*) clCreateBuffer(oclContext->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(Material) * scene->materialCount, scene->materials, &oclContext->err);
+    cl_mem dev_materials = (void*) clCreateBuffer(oclContext->ctx, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Material) * scene->materialCount, scene->materials, &oclContext->err);
     if (oclContext->err != CL_SUCCESS) {
         printf("Couldn't create dev_materials.\n");
         return NULL;
@@ -88,7 +88,7 @@ cl_mem scene_create_gpu_materials(oclContext* oclContext, Scene* scene) {
 }
 
 cl_mem scene_create_gpu_planes(oclContext* oclContext, Scene* scene) {
-    cl_mem dev_planes = (void*) clCreateBuffer(oclContext->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(Plane) * scene->planeCount, scene->planes, &oclContext->err);
+    cl_mem dev_planes = (void*) clCreateBuffer(oclContext->ctx, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Plane) * scene->planeCount, scene->planes, &oclContext->err);
     if (oclContext->err != CL_SUCCESS) {
         printf("Couldn't create dev_planes.\n");
         return NULL;
@@ -97,7 +97,7 @@ cl_mem scene_create_gpu_planes(oclContext* oclContext, Scene* scene) {
 }
 
 cl_mem scene_create_gpu_spheres(oclContext* oclContext, Scene* scene) {
-    cl_mem dev_spheres = (void*) clCreateBuffer(oclContext->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(Sphere) * scene->sphereCount, scene->spheres, &oclContext->err);
+    cl_mem dev_spheres = (void*) clCreateBuffer(oclContext->ctx, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Sphere) * scene->sphereCount, scene->spheres, &oclContext->err);
     if (oclContext->err != CL_SUCCESS) {
         printf("Couldn't create dev_spheres.\n");
         return NULL;
@@ -106,7 +106,7 @@ cl_mem scene_create_gpu_spheres(oclContext* oclContext, Scene* scene) {
 }
 
 cl_mem scene_create_gpu_triangles(oclContext* oclContext, Scene* scene) {
-    cl_mem dev_triangles = (void*) clCreateBuffer(oclContext->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(Triangle) * scene->triangleCount, scene->triangles, &oclContext->err);
+    cl_mem dev_triangles = (void*) clCreateBuffer(oclContext->ctx, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Triangle) * scene->triangleCount, scene->triangles, &oclContext->err);
     if (oclContext->err != CL_SUCCESS) {
         printf("Couldn't create dev_triangles.\n");
         return NULL;
@@ -115,7 +115,7 @@ cl_mem scene_create_gpu_triangles(oclContext* oclContext, Scene* scene) {
 }
 
 cl_mem scene_create_gpu_pointLights(oclContext *oclContext, Scene *scene) {
-    cl_mem dev_pointLights = (void*) clCreateBuffer(oclContext->ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(PointLight) * scene->pointLightCount, scene->pointLights, &oclContext->err);
+    cl_mem dev_pointLights = (void*) clCreateBuffer(oclContext->ctx, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(PointLight) * scene->pointLightCount, scene->pointLights, &oclContext->err);
     if (oclContext->err != CL_SUCCESS) {
         printf("Couldn't create dev_pointlights.\n");
         return NULL;
