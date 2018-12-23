@@ -11,7 +11,7 @@
 #include "utils/math.h"
 
 void renderImage(SDL_Renderer *renderer, SDL_Texture* texture, Image* image) {
-	int i = SDL_UpdateTexture(texture, NULL, image->buffer, (int)(sizeof(uint32_t) * image->width));
+	SDL_UpdateTexture(texture, NULL, image->buffer, (int)(sizeof(uint32_t) * image->width));
 	SDL_RenderClear(renderer);
 	SDL_RenderCopy(renderer, texture, NULL, NULL);
     SDL_RenderPresent(renderer);
@@ -25,7 +25,8 @@ int main(int argc, char* argv[]) {
     uint32_t height = 1080;
 	uint32_t raysPerPixel = 1;
 	uint32_t maxRecursionDepth = 5;
-	double MS_PER_UPDATE = 1000.0 / 60.0;
+	double MS_PER_UPDATE = 1000.0 / 120.0;
+	double CAMERA_ROTATION_SPEED = 0.05;
 
     gpuContext* gpuContext = gpu_initContext();
 
@@ -108,18 +109,18 @@ int main(int argc, char* argv[]) {
 
     // wait for quit event before quitting
     bool running = true;
-	double previous = (double) SDL_GetTicks();
-	double lag = 0.0;
+	uint32_t lastTime = SDL_GetTicks();
+	double delta = 0.0;
 	bool isRenderDirty = true;
 
 	float deg = 0;
 
     while(running) {
 
-		double current = (double)SDL_GetTicks();
-		double elapsed = current - previous;
-		previous = current;
-		lag += elapsed;
+		uint32_t current = SDL_GetTicks();
+		uint32_t elapsed = current - lastTime;
+		lastTime = current;
+		delta += elapsed;
 
 		// input handling
         SDL_Event event;
@@ -133,7 +134,7 @@ int main(int argc, char* argv[]) {
             }
         }
 
-		while (lag >= MS_PER_UPDATE) {
+		while (delta >= MS_PER_UPDATE) {
 			// update
 
 			// move the camera in a circle around the origin
@@ -141,12 +142,12 @@ int main(int argc, char* argv[]) {
 			scene->camera->position.x = radius * cosf(math_deg2rad(deg));
 			scene->camera->position.z = radius * sinf(math_deg2rad(deg));
 			camera_setup(scene->camera);
-			deg += 0.05f;
+			deg += CAMERA_ROTATION_SPEED;
 			if (deg >= 360.0) {
 				deg = 0.0;
 			}
 			
-			lag -= MS_PER_UPDATE;
+			delta -= MS_PER_UPDATE;
 		}
 
 		// render
