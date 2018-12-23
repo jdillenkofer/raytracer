@@ -36,6 +36,7 @@ typedef struct {
 } Scene;
 
 Scene* scene_create(void);
+Scene* scene_init(uint32_t width, uint32_t height);
 // adds the material to the scene and returns the materialId
 uint32_t scene_addMaterial(Scene* scene, Material material);
 void scene_addPlane(Scene* scene, Plane plane);

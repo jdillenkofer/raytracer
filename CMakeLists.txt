@@ -76,7 +76,8 @@ set(HEADER_FILES
         src/plane.h
         src/pointlight.h
 		src/object.h
-		src/vertextable.h src/kernel.h)
+		src/vertextable.h 
+		src/gpu.h)
 
 find_package(OpenCL REQUIRED)
 include_directories(${OpenCL_INCLUDE_DIRS})
