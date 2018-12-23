@@ -57,7 +57,8 @@ set(SOURCE_FILES
         src/scene.c
         src/raytracer.c
 		src/object.c
-		src/vertextable.c)
+		src/vertextable.c
+		src/kernel.cl)
 
 set(HEADER_FILES
         src/utils/vec3.h
