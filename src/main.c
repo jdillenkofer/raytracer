@@ -8,12 +8,13 @@
 #include "kernel.h"
 
 #include <SDL2/SDL.h>
-#include <utils/random.h>
+#include "utils/random.h"
+#include "utils/math.h"
 
 Scene* initScene(uint32_t width, uint32_t height) {
     Scene* scene = scene_create();
     {
-        Vec3 camera_pos = { 0.0f , 2.0f, 40.0f };
+        Vec3 camera_pos = { 40.0f , 2.0f, 0.0f };
         Vec3 lookAt = (Vec3) {0.0f, 0.0f, 0.0f};
         float FOV = 110.0f;
         Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
@@ -60,25 +61,25 @@ Scene* initScene(uint32_t width, uint32_t height) {
         Plane front = {0};
         front.materialIndex = greyId;
         front.normal = (Vec3) { 0.0f, 0.0f, 1.0f };
-        front.distanceFromOrigin = 8;
+        front.distanceFromOrigin = 50;
         scene_addPlane(scene, front);
 
         Plane back = {0};
         back.materialIndex = greyId;
         back.normal = (Vec3) { 0.0f, 0.0f, 1.0f };
-        back.distanceFromOrigin = -40;
+        back.distanceFromOrigin = -50;
         scene_addPlane(scene, back);
 
         Plane left = {0};
         left.materialIndex = greyId;
         left.normal = (Vec3) { 1.0f, 0.0f, 0.0f };
-        left.distanceFromOrigin = -8;
+        left.distanceFromOrigin = -50;
         scene_addPlane(scene, left);
 
         Plane right = {0};
         right.materialIndex = greyId;
         right.normal = (Vec3) { 1.0f, 0.0f, 0.0f };
-        right.distanceFromOrigin = 8;
+        right.distanceFromOrigin = 50;
         scene_addPlane(scene, right);
 
         Sphere redLeftSphere = {0};
@@ -163,8 +164,9 @@ int main(int argc, char* argv[]) {
 
     uint32_t width = 1920;
     uint32_t height = 1080;
-	uint32_t raysPerPixel = 64;
+	uint32_t raysPerPixel = 1;
 	uint32_t maxRecursionDepth = 5;
+	double MS_PER_UPDATE = 1000.0 / 60.0;
 
     oclContext* openCLContext = initOpenClContext();
 
@@ -240,21 +242,22 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    const size_t threadsPerDim[2] = { width, height };
-    openCLContext->err = clEnqueueNDRangeKernel(openCLContext->command_queue, raytrace_kernel, 2, NULL, threadsPerDim, NULL, 0, NULL, NULL);
-    if (openCLContext->err != CL_SUCCESS) {
-        printf("Couldn't enqueue kernel.\n");
-        return 1;
-    }
-
-    // Copy back from device
-    clEnqueueReadBuffer(openCLContext->command_queue, dev_image, CL_TRUE, 0, sizeof(uint32_t) * image->width * image->height, image->buffer, 0, NULL, NULL);
-
-    renderImage(renderer, image);
-
     // wait for quit event before quitting
     bool running = true;
+	double previous = (double) SDL_GetTicks();
+	double lag = 0.0;
+	bool isRenderDirty = true;
+
+	float deg = 0;
+
     while(running) {
+
+		double current = (double)SDL_GetTicks();
+		double elapsed = current - previous;
+		previous = current;
+		lag += elapsed;
+
+		// input handling
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             switch(event.type) {
@@ -265,6 +268,41 @@ int main(int argc, char* argv[]) {
                     break;
             }
         }
+
+		while (lag >= MS_PER_UPDATE) {
+			// update
+
+			// move the camera in a circle around the origin
+			float radius = 40.0f;
+			scene->camera->position.x = radius * cosf(math_deg2rad(deg));
+			scene->camera->position.z = radius * sinf(math_deg2rad(deg));
+			camera_setup(scene->camera);
+			deg += 0.05f;
+			if (deg >= 360.0) {
+				deg = 0.0;
+			}
+			
+			isRenderDirty = true;
+			lag -= MS_PER_UPDATE;
+		}
+
+		// render
+		if (isRenderDirty) {
+			clEnqueueWriteBuffer(openCLContext->command_queue, dev_camera, CL_TRUE, 0, sizeof(Camera), scene->camera, 0, NULL, NULL);
+			openCLContext->err = clSetKernelArg(raytrace_kernel, 0, sizeof(cl_mem), &dev_camera);
+			const size_t threadsPerDim[2] = { width, height };
+			openCLContext->err = clEnqueueNDRangeKernel(openCLContext->command_queue, raytrace_kernel, 2, NULL, threadsPerDim, NULL, 0, NULL, NULL);
+			if (openCLContext->err != CL_SUCCESS) {
+				printf("Couldn't enqueue kernel.\n");
+				return 1;
+			}
+
+			// Copy back from device
+			clEnqueueReadBuffer(openCLContext->command_queue, dev_image, CL_TRUE, 0, sizeof(uint32_t) * image->width * image->height, image->buffer, 0, NULL, NULL);
+
+			renderImage(renderer, image);
+			isRenderDirty = false;
+		}
     }
 
     bitmap_save_image("test.bmp", image);
