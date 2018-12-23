@@ -506,19 +506,19 @@ __kernel void raytrace(__global Camera* camera, __global Material* materials, ui
    uint32_t x = get_global_id(0);
    uint32_t width = camera->width;
    uint32_t y = get_global_id(1);
-   float PosY = -1.0f + 2.0f * ((float)y / (camera->height));
    float PosX = -1.0f + 2.0f * ((float)x / (camera->width));
+   float PosY = -1.0f + 2.0f * ((float)y / (camera->height));
    Vec3 color;
    color.r = 0.0f;
    color.g = 0.0f;
    color.b = 0.0f;
    // Supersampling loops
    for (uint32_t j = 0; j < raysPerHeightPixel; j++) {
+	   Vec3 OffsetY = vec3_mul(camera->y,
+		   (PosY - pixelHeight + j * deltaY)*camera->renderTargetHeight / 2.0f);
        for (uint32_t i = 0; i < raysPerWidthPixel; i++) {
-           Vec3 OffsetY = vec3_mul(camera->y,
-               (PosY - pixelHeight + j * deltaY)*camera->renderTargetHeight/2.0f);
-           Vec3 OffsetX = vec3_mul(camera->x,
-               (PosX - pixelWidth + i * deltaX)*camera->renderTargetWidth/2.0f);
+		   Vec3 OffsetX = vec3_mul(camera->x,
+			   (PosX - pixelWidth + i * deltaX)*camera->renderTargetWidth / 2.0f);
            Vec3 renderTargetPos = vec3_sub(vec3_add(camera->renderTargetCenter, OffsetX), OffsetY);
            Ray ray = {
                camera->position,
@@ -530,14 +530,13 @@ __kernel void raytrace(__global Camera* camera, __global Material* materials, ui
        }
    }
 
-            // currently values are clamped to [0,1]
-            // in the future we may return floats > 1.0
-            // and use hdr to map it back to the [0.0, 1.0] range after
-            // all pixels are calculated
-            // this would avoid that really bright areas look the \same\
-            color = vec3_clamp(color, 0.0f, 1.0f);
-
-   image[y*width + x] = 
+   // currently values are clamped to [0,1]
+   // in the future we may return floats > 1.0
+   // and use hdr to map it back to the [0.0, 1.0] range after
+   // all pixels are calculated
+   // this would avoid that really bright areas look the 
+   // same color = vec3_clamp(color, 0.0f, 1.0f);
+   image[y * width + x] = 
            (0xFFu << 24) |
            ((uint32_t)(color.r * 255) << 16) |
            ((uint32_t)(color.g * 255) << 8) |
