@@ -60,7 +60,7 @@ gpuContext* gpu_initContext() {
 }
 
 cl_mem gpu_createImageBuffer(gpuContext* context, Image* image) {
-    cl_mem dev_image = clCreateBuffer(context->ctx, CL_MEM_WRITE_ONLY, sizeof(uint32_t) * image->width * image->height, image->buffer, &context->err);
+    cl_mem dev_image = clCreateBuffer(context->ctx, CL_MEM_WRITE_ONLY, sizeof(uint32_t) * image->width * image->height, NULL, &context->err);
     if (context->err != CL_SUCCESS) {
         printf("Couldn't create dev_image.\n");
         return NULL;

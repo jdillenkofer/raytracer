@@ -26,9 +26,12 @@ int main(int argc, char* argv[]) {
 	uint32_t raysPerPixel = 1;
 	uint32_t maxRecursionDepth = 5;
 	double MS_PER_UPDATE = 1000.0 / 120.0;
-	double CAMERA_ROTATION_SPEED = 0.05;
+	float CAMERA_ROTATION_SPEED = 0.05f;
 
     gpuContext* gpuContext = gpu_initContext();
+    if (gpuContext == NULL) {
+        return 1;
+    }
 
     Image* image = image_create(width, height);
     cl_mem dev_image = gpu_createImageBuffer(gpuContext, image);
@@ -111,7 +114,6 @@ int main(int argc, char* argv[]) {
     bool running = true;
 	uint32_t lastTime = SDL_GetTicks();
 	double delta = 0.0;
-	bool isRenderDirty = true;
 
 	float deg = 0;
 
@@ -143,8 +145,8 @@ int main(int argc, char* argv[]) {
 			scene->camera->position.z = radius * sinf(math_deg2rad(deg));
 			camera_setup(scene->camera);
 			deg += CAMERA_ROTATION_SPEED;
-			if (deg >= 360.0) {
-				deg = 0.0;
+			if (deg >= 360.0f) {
+				deg = 0.0f;
 			}
 			
 			delta -= MS_PER_UPDATE;
