@@ -36,8 +36,8 @@ static bool object_skipToNextLine(char* data, size_t* offset) {
     return !isEndOfStr;
 }
 
-static bool object_atEndOfLine(char* data, size_t* offset) {
-    return data[*offset] == '\n';
+static bool object_atEndOfLineOrAtEndOfFile(char* data, size_t* offset) {
+    return data[*offset] == '\n' || data[*offset] == '\0';
 }
 
 #define LOCAL_NUM_BUFFERSIZE 255
@@ -117,7 +117,7 @@ static void object_parseFace(Object* object, VertexTable* vertexTable, char* dat
     Vec3 prevVertex = vertextable_getVertexById(vertexTable, prevId);
     object_skipToNextWhitespace(data, offset);
 
-    while (!object_atEndOfLine(data, offset)) {
+    while (!object_atEndOfLineOrAtEndOfFile(data, offset)) {
         object_skipWhitespace(data, offset);
         uint32_t v2Id = object_getInt(data, offset);
         object_skipToNextWhitespace(data, offset);
