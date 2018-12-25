@@ -382,126 +382,122 @@ static void raytracer_calcClosestTriangleIntersect(__global Triangle* triangles,
     }
 }
 
-static Vec3 raytracer_raycast_helper(__global Camera* camera, __global Material* materials, uint32_t materialCount, __global Plane* planes, uint32_t planeCount, __global Sphere* spheres, uint32_t sphereCount, __global Triangle* triangles, uint32_t triangleCount, __global PointLight* pointLights, uint32_t pointLightCount, Ray* primaryRay, uint32_t recursionDepth, uint32_t maxRecursionDepth) {
-    Vec3 outColor;
-    outColor.r = 0.0f;
-    outColor.g = 0.0f;
-    outColor.b = 0.0f;
-
-    if (recursionDepth >= maxRecursionDepth) {
-        return outColor;
-    }
-
-    float minHitDistance = FLT_MAX;
-    uint32_t hitMaterialIndex = 0;
-
-    Vec3 intersectionNormal;
-
-    raytracer_calcClosestPlaneIntersect(planes, planeCount, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex);
-    raytracer_calcClosestSphereIntersect(spheres, sphereCount, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex);
-    raytracer_calcClosestTriangleIntersect(triangles, triangleCount, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex);
-
-    if (hitMaterialIndex) {
-
-        __global Material* hitMaterial = &materials[hitMaterialIndex];
-
-        // if we got a hit, calculate the hitPoint and send a shadow rays to each lightsource
-        Vec3 hitPoint = raytracer_calculateHitpoint(primaryRay, minHitDistance);
-
-        // REFLECTION AND REFRACTION
-        if (hitMaterial->refractionIndex > 0) {
-            float kr = raytracer_fresnel(primaryRay->direction, intersectionNormal, hitMaterial->refractionIndex);
-
-            Vec3 refractionColor;
-            refractionColor.r = 0.0f;
-            refractionColor.g = 0.0f;
-            refractionColor.b = 0.0f;
-
-            // compute refraction if it is not a case of total internal reflection
-            if (kr < 1) {
-                Ray refractedRay;
-                refractedRay.origin = hitPoint;
-                refractedRay.direction = raytracer_refract(primaryRay->direction, intersectionNormal, hitMaterial->refractionIndex);
-                raytracer_moveRayOutOfObject(&refractedRay);
-
-                refractionColor = raytracer_raycast_helper(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &refractedRay, recursionDepth + 1, maxRecursionDepth);
-            }
-
-            Ray reflectedRay;
-            reflectedRay.origin = hitPoint;
-            reflectedRay.direction = vec3_reflect(primaryRay->direction, intersectionNormal);
-            raytracer_moveRayOutOfObject(&reflectedRay);
-
-            Vec3 reflectionColor = raytracer_raycast_helper(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &reflectedRay, recursionDepth + 1, maxRecursionDepth);
-
-            // mix the two
-            outColor = vec3_add(outColor, vec3_add(vec3_mul(reflectionColor, kr), vec3_mul(refractionColor, (1 - kr))));
-        } else
-        // REFLECTION:
-        if (hitMaterial->reflectionIndex > 0) {
-
-            Ray reflectedRay;
-            reflectedRay.origin = hitPoint;
-            reflectedRay.direction = vec3_reflect(primaryRay->direction, intersectionNormal);
-            raytracer_moveRayOutOfObject(&reflectedRay);
-
-            Vec3 reflectionColor = raytracer_raycast_helper(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &reflectedRay, recursionDepth + 1, maxRecursionDepth);
-
-            outColor = vec3_add(outColor, vec3_mul(reflectionColor, hitMaterial->reflectionIndex));
-        }
-
-        // SHADOWS
-        for (uint32_t i = 0; i < pointLightCount; i++) {
-            __global PointLight* pointLight = &pointLights[i];
-            Ray shadowRay;
-            Vec3 hitToLight = vec3_sub(pointLight->position, hitPoint);
-            // Vec3 randomOffset = vec3_norm((Vec3) { random_bilateral(), random_bilateral(), random_bilateral()});
-            // hitToLight = vec3_add(hitToLight, randomOffset);
-            float distanceToLight = vec3_length(hitToLight);
-
-            shadowRay.origin = hitPoint;
-            shadowRay.direction = vec3_norm(hitToLight);
-            raytracer_moveRayOutOfObject(&shadowRay);
-
-            uint32_t shadowRayHitMaterialIndex = 0;
-            float closestHitDistance = FLT_MAX;
-            Vec3 shadowRayIntersectionNormal;
-            raytracer_calcClosestPlaneIntersect(planes, planeCount, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
-            raytracer_calcClosestSphereIntersect(spheres, sphereCount, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
-            raytracer_calcClosestTriangleIntersect(triangles, triangleCount, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex);
-            if (distanceToLight < closestHitDistance) {
-                // we hit the light
-                float cosAngle = vec3_dot(shadowRay.direction, intersectionNormal);
-                cosAngle = math_clamp(cosAngle, 0.0f, 1.0f);
-
-                float lightStrength = (pointLight->strength/(4 * PI * distanceToLight * distanceToLight));
-                Vec3 diffuseLighting = vec3_mul(pointLight->emissionColor, cosAngle * lightStrength);
-
-                Vec3 toView = vec3_norm(vec3_sub(camera->position, hitPoint));
-                Vec3 toLight = vec3_mul(shadowRay.direction, -1);
-                Vec3 reflectionVector = vec3_reflect(toLight, intersectionNormal);
-                cosAngle = vec3_dot(toView, reflectionVector);
-                cosAngle = pow(cosAngle, 64);
-
-                Vec3 specularLighting = vec3_mul(pointLight->emissionColor, cosAngle * lightStrength);
-
-                outColor = vec3_add(outColor, vec3_mul(vec3_add(diffuseLighting, specularLighting), (1-hitMaterial->reflectionIndex)));
-            }
-        }
-        outColor = vec3_hadamard(outColor, hitMaterial->color);
-    }
-    return outColor;
+static Vec3 raytracer_raycast_helper_0(__global Camera* camera, __global Material* materials, uint32_t materialCount, __global Plane* planes, uint32_t planeCount, __global Sphere* spheres, uint32_t sphereCount, __global Triangle* triangles, uint32_t triangleCount, __global PointLight* pointLights, uint32_t pointLightCount, Ray* primaryRay) {
+	Vec3 outColor;
+	outColor.r = 0.0f;
+	outColor.g = 0.0f;
+	outColor.b = 0.0f;
+	return outColor;
 }
 
-Vec3 raytracer_raycast(__global Camera* camera, __global Material* materials, uint32_t materialCount, __global Plane* planes, uint32_t planeCount, __global Sphere* spheres, uint32_t sphereCount, __global Triangle* triangles, uint32_t triangleCount, __global PointLight* pointLights, uint32_t pointLightCount, Ray* primaryRay, uint32_t maxRecursionDepth) {
-    return raytracer_raycast_helper(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, primaryRay, 0, maxRecursionDepth);
+#define DEFINE_RAYCAST_HELPER(X, Y) \
+static Vec3 raytracer_raycast_helper_##X(__global Camera* camera, __global Material* materials, uint32_t materialCount, \
+                                     __global Plane* planes, uint32_t planeCount, __global Sphere* spheres, uint32_t sphereCount, \
+									__global Triangle* triangles, uint32_t triangleCount, __global PointLight* pointLights, uint32_t pointLightCount, \
+									Ray* primaryRay) { \
+	Vec3 outColor; \
+	outColor.r = 0.0f; \
+	outColor.g = 0.0f; \
+	outColor.b = 0.0f; \
+	\
+	float minHitDistance = FLT_MAX; \
+	uint32_t hitMaterialIndex = 0; \
+	Vec3 intersectionNormal; \
+	raytracer_calcClosestPlaneIntersect(planes, planeCount, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex); \
+	raytracer_calcClosestSphereIntersect(spheres, sphereCount, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex); \
+	raytracer_calcClosestTriangleIntersect(triangles, triangleCount, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex); \
+	\
+	if (hitMaterialIndex) { \
+		__global Material* hitMaterial = &materials[hitMaterialIndex]; \
+		/* if we got a hit, calculate the hitPoint and send a shadow rays to each lightsource */ \
+		Vec3 hitPoint = raytracer_calculateHitpoint(primaryRay, minHitDistance); \
+										\
+		/* REFLECTION AND REFRACTION */ \
+		if (hitMaterial->refractionIndex > 0) { \
+			float kr = raytracer_fresnel(primaryRay->direction, intersectionNormal, hitMaterial->refractionIndex); \
+			Vec3 refractionColor; \
+			refractionColor.r = 0.0f; \
+			refractionColor.g = 0.0f; \
+			refractionColor.b = 0.0f; \
+			/* compute refraction if it is not a case of total internal reflection */ \
+			if (kr < 1) { \
+				Ray refractedRay; \
+				refractedRay.origin = hitPoint; \
+				refractedRay.direction = raytracer_refract(primaryRay->direction, intersectionNormal, hitMaterial->refractionIndex); \
+				raytracer_moveRayOutOfObject(&refractedRay); \
+				refractionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &refractedRay); \
+			} \
+			\
+			Ray reflectedRay; \
+			reflectedRay.origin = hitPoint; \
+			reflectedRay.direction = vec3_reflect(primaryRay->direction, intersectionNormal); \
+			raytracer_moveRayOutOfObject(&reflectedRay); \
+			Vec3 reflectionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &reflectedRay); \
+			/* mix the two */ \
+			outColor = vec3_add(outColor, vec3_add(vec3_mul(reflectionColor, kr), vec3_mul(refractionColor, (1 - kr)))); \
+		} else \
+			/* REFLECTION: */ \
+		if (hitMaterial->reflectionIndex > 0) { \
+			Ray reflectedRay; \
+			reflectedRay.origin = hitPoint; \
+			reflectedRay.direction = vec3_reflect(primaryRay->direction, intersectionNormal); \
+			raytracer_moveRayOutOfObject(&reflectedRay); \
+			Vec3 reflectionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &reflectedRay); \
+			outColor = vec3_add(outColor, vec3_mul(reflectionColor, hitMaterial->reflectionIndex)); \
+		} \
+			\
+		/* SHADOWS */ \
+		for (uint32_t i = 0; i < pointLightCount; i++) { \
+			__global PointLight* pointLight = &pointLights[i]; \
+			Ray shadowRay; \
+			Vec3 hitToLight = vec3_sub(pointLight->position, hitPoint); \
+			/* Vec3 randomOffset = vec3_norm((Vec3) { random_bilateral(), random_bilateral(), random_bilateral()}); */ \
+			/* hitToLight = vec3_add(hitToLight, randomOffset); */ \
+			float distanceToLight = vec3_length(hitToLight); \
+			shadowRay.origin = hitPoint; \
+			shadowRay.direction = vec3_norm(hitToLight); \
+			raytracer_moveRayOutOfObject(&shadowRay); \
+			uint32_t shadowRayHitMaterialIndex = 0; \
+			float closestHitDistance = FLT_MAX; \
+			Vec3 shadowRayIntersectionNormal; \
+			raytracer_calcClosestPlaneIntersect(planes, planeCount, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex); \
+			raytracer_calcClosestSphereIntersect(spheres, sphereCount, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex); \
+			raytracer_calcClosestTriangleIntersect(triangles, triangleCount, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex); \
+			if (distanceToLight < closestHitDistance) { \
+				/* we hit the light */ \
+				float cosAngle = vec3_dot(shadowRay.direction, intersectionNormal); \
+				cosAngle = math_clamp(cosAngle, 0.0f, 1.0f); \
+				float lightStrength = (pointLight->strength / (4 * PI * distanceToLight * distanceToLight)); \
+				Vec3 diffuseLighting = vec3_mul(pointLight->emissionColor, cosAngle * lightStrength); \
+				Vec3 toView = vec3_norm(vec3_sub(camera->position, hitPoint)); \
+				Vec3 toLight = vec3_mul(shadowRay.direction, -1); \
+				Vec3 reflectionVector = vec3_reflect(toLight, intersectionNormal); \
+				cosAngle = vec3_dot(toView, reflectionVector); \
+				cosAngle = pow(cosAngle, 64); \
+				Vec3 specularLighting = vec3_mul(pointLight->emissionColor, cosAngle * lightStrength); \
+				outColor = vec3_add(outColor, vec3_mul(vec3_add(diffuseLighting, specularLighting), (1 - hitMaterial->reflectionIndex))); \
+			} \
+		} \
+		outColor = vec3_hadamard(outColor, hitMaterial->color); \
+	} \
+	return outColor; \
+} \
+
+DEFINE_RAYCAST_HELPER(1, 0);
+DEFINE_RAYCAST_HELPER(2, 1);
+DEFINE_RAYCAST_HELPER(3, 2);
+DEFINE_RAYCAST_HELPER(4, 3);
+DEFINE_RAYCAST_HELPER(5, 4);
+
+Vec3 raytracer_raycast(__global Camera* camera, __global Material* materials, uint32_t materialCount, __global Plane* planes, uint32_t planeCount, __global Sphere* spheres, uint32_t sphereCount, __global Triangle* triangles, uint32_t triangleCount, __global PointLight* pointLights, uint32_t pointLightCount, Ray* primaryRay) {
+    return raytracer_raycast_helper_5(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, primaryRay);
 }
 
 
 __kernel void raytrace(__global Camera* camera, __global Material* materials, uint32_t materialCount, 
                        __global Plane* planes, uint32_t planeCount, __global Sphere* spheres, uint32_t sphereCount, 
                        __global Triangle* triangles, uint32_t triangleCount, __global PointLight* pointLights, uint32_t pointLightCount, 
-                       __global uint32_t* image, uint32_t maxRecursionDepth, float rayColorContribution, float deltaX, float deltaY, 
+                       __global uint32_t* image, float rayColorContribution, float deltaX, float deltaY, 
                        float pixelWidth, float pixelHeight, uint32_t raysPerWidthPixel, uint32_t raysPerHeightPixel) {
    uint32_t x = get_global_id(0);
    uint32_t width = camera->width;
@@ -525,7 +521,7 @@ __kernel void raytrace(__global Camera* camera, __global Material* materials, ui
                vec3_norm(vec3_sub(renderTargetPos, camera->position))
            };
 
-           Vec3 currentRayColor = raytracer_raycast(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &ray, maxRecursionDepth);
+           Vec3 currentRayColor = raytracer_raycast(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &ray);
            color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
        }
    }

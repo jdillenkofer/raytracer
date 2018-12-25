@@ -24,7 +24,6 @@ int main(int argc, char* argv[]) {
     uint32_t width = 1920;
     uint32_t height = 1080;
 	uint32_t raysPerPixel = 1;
-	uint32_t maxRecursionDepth = 5;
 	double MS_PER_UPDATE = 1000.0 / 120.0;
 	float CAMERA_ROTATION_SPEED = 0.05f;
 
@@ -97,14 +96,13 @@ int main(int argc, char* argv[]) {
     gpuContext->err |= clSetKernelArg(raytrace_kernel, 9, sizeof(cl_mem), &dev_pointLights);
     gpuContext->err |= clSetKernelArg(raytrace_kernel, 10, sizeof(uint32_t), &scene->pointLightCount);
     gpuContext->err |= clSetKernelArg(raytrace_kernel, 11, sizeof(cl_mem), &dev_image);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 12, sizeof(uint32_t), &maxRecursionDepth);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 13, sizeof(float), &rayColorContribution);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 14, sizeof(float), &deltaX);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 15, sizeof(float), &deltaY);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 16, sizeof(float), &pixelWidth);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 17, sizeof(float), &pixelHeight);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 18, sizeof(uint32_t), &raysPerWidthPixel);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 19, sizeof(uint32_t), &raysPerHeightPixel);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 12, sizeof(float), &rayColorContribution);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 13, sizeof(float), &deltaX);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 14, sizeof(float), &deltaY);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 15, sizeof(float), &pixelWidth);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 16, sizeof(float), &pixelHeight);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 17, sizeof(uint32_t), &raysPerWidthPixel);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 18, sizeof(uint32_t), &raysPerHeightPixel);
     if (gpuContext->err != CL_SUCCESS) {
         printf("Couldn't set all kernel args correctly.\n");
         return 1;
