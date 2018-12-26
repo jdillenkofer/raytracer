@@ -12,7 +12,7 @@
 // it defines some weird windows macro thingy
 #include <windows.h>
 #endif
-#include <gl/gl.h>
+#include <GL/gl.h>
 #include "utils/random.h"
 #include "utils/math.h"
 

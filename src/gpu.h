@@ -7,7 +7,11 @@
 #include <windows.h>
 #endif
 
-#include <gl/GL.h>
+#ifdef __linux__
+#include <GL/glx.h>
+#endif
+
+#include <GL/gl.h>
 
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
@@ -45,12 +49,18 @@ gpuContext* gpu_initContext() {
 	 */
 #ifdef WIN32
 	cl_context_properties props[] = { 
-		CL_GL_CONTEXT_KHR, (cl_context_properties)wglGetCurrentContext(), 
-		CL_WGL_HDC_KHR, (cl_context_properties)wglGetCurrentDC(), 
-		CL_CONTEXT_PLATFORM, (cl_context_properties)context->plat, 
+		CL_GL_CONTEXT_KHR, (cl_context_properties) wglGetCurrentContext(),
+		CL_WGL_HDC_KHR, (cl_context_properties) wglGetCurrentDC(),
+		CL_CONTEXT_PLATFORM, (cl_context_properties) context->plat,
 		0 };
 #endif
-
+#ifdef __linux__
+    cl_context_properties props[] = {
+            CL_GL_CONTEXT_KHR, (cl_context_properties) glXGetCurrentContext(),
+            CL_GLX_DISPLAY_KHR, (cl_context_properties) glXGetCurrentDisplay(),
+            CL_CONTEXT_PLATFORM, (cl_context_properties) context->plat,
+            0};
+#endif
     context->ctx = clCreateContext(props, 1, &context->dev, NULL, NULL, &context->err);
     context->command_queue = clCreateCommandQueue(context->ctx, context->dev, 0, &context->err);
 
