@@ -497,7 +497,7 @@ Vec3 raytracer_raycast(__global Camera* camera, __global Material* materials, ui
 __kernel void raytrace(__global Camera* camera, __global Material* materials, uint32_t materialCount, 
                        __global Plane* planes, uint32_t planeCount, __global Sphere* spheres, uint32_t sphereCount, 
                        __global Triangle* triangles, uint32_t triangleCount, __global PointLight* pointLights, uint32_t pointLightCount, 
-                       __global uint32_t* image, float rayColorContribution, float deltaX, float deltaY, 
+					   __write_only image2d_t image, float rayColorContribution, float deltaX, float deltaY,
                        float pixelWidth, float pixelHeight, uint32_t raysPerWidthPixel, uint32_t raysPerHeightPixel) {
    uint32_t x = get_global_id(0);
    uint32_t width = camera->width;
@@ -515,7 +515,9 @@ __kernel void raytrace(__global Camera* camera, __global Material* materials, ui
        for (uint32_t i = 0; i < raysPerWidthPixel; i++) {
 		   Vec3 OffsetX = vec3_mul(camera->x,
 			   (PosX - pixelWidth + i * deltaX)*camera->renderTargetWidth / 2.0f);
-           Vec3 renderTargetPos = vec3_sub(vec3_add(camera->renderTargetCenter, OffsetX), OffsetY);
+           // (0, 0) is the top left
+		   // so we have to sample the texture with flipped y
+		   Vec3 renderTargetPos = vec3_sub(vec3_add(camera->renderTargetCenter, OffsetX), OffsetY);
            Ray ray = {
                camera->position,
                vec3_norm(vec3_sub(renderTargetPos, camera->position))
@@ -532,9 +534,10 @@ __kernel void raytrace(__global Camera* camera, __global Material* materials, ui
    // all pixels are calculated
    // this would avoid that really bright areas look the 
    // same color = vec3_clamp(color, 0.0f, 1.0f);
-   image[y * width + x] = 
-           (0xFFu << 24) |
-           ((uint32_t)(color.r * 255) << 16) |
-           ((uint32_t)(color.g * 255) << 8) |
-           ((uint32_t)(color.b * 255) << 0);
+   int2 pixelcoord;
+   pixelcoord.x = x;
+   pixelcoord.y = y;
+   
+   float4 pixel = (float4) (color.r, color.g, color.b, 1.0f);
+   write_imagef(image, pixelcoord, pixel);
 };

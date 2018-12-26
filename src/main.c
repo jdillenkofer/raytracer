@@ -7,6 +7,12 @@
 #include "gpu.h"
 
 #include <SDL2/SDL.h>
+#ifdef WIN32
+// this is sadly required for <gl/gl.h> to compile...
+// it defines some weird windows macro thingy
+#include <windows.h>
+#endif
+#include <gl/gl.h>
 #include "utils/random.h"
 #include "utils/math.h"
 
@@ -27,38 +33,6 @@ int main(int argc, char* argv[]) {
 	double MS_PER_UPDATE = 1000.0 / 120.0;
 	float CAMERA_ROTATION_SPEED = 0.05f;
 
-    gpuContext* gpuContext = gpu_initContext();
-    if (gpuContext == NULL) {
-        return 1;
-    }
-
-    Image* image = image_create(width, height);
-    cl_mem dev_image = gpu_createImageBuffer(gpuContext, image);
-
-    Scene* scene = scene_init(width, height);
-    cl_mem dev_camera = gpu_createCameraBuffer(gpuContext, scene);
-    cl_mem dev_materials = gpu_createMaterialsBuffer(gpuContext, scene);
-    cl_mem dev_planes = gpu_createPlanesBuffer(gpuContext, scene);
-    cl_mem dev_spheres = gpu_createSpheresBuffer(gpuContext, scene);
-    cl_mem dev_triangles = gpu_createTrianglesBuffer(gpuContext, scene);
-    cl_mem dev_pointLights = gpu_createPointLightsBuffer(gpuContext, scene);
-
-	float rayColorContribution = 1.0f / (float) raysPerPixel;
-
-	float pixelWidth = 1.0f / (float) width;
-    float pixelHeight = 1.0f / (float) height;
-    float rootTerm = sqrtf(pixelWidth/pixelHeight * raysPerPixel + powf(pixelWidth - pixelHeight, 2) / 4 * powf(pixelHeight, 2));
-    uint32_t raysPerWidthPixel = 1;
-    uint32_t raysPerHeightPixel = 1;
-    float deltaX = pixelWidth;
-    float deltaY = pixelHeight;
-    if (raysPerPixel > 1) {
-        raysPerWidthPixel = (uint32_t) (rootTerm - (pixelWidth - pixelHeight / 2 * pixelHeight));
-        raysPerHeightPixel = (uint32_t) (raysPerPixel / raysPerWidthPixel);
-        deltaX = pixelWidth / raysPerWidthPixel;
-        deltaY = pixelHeight / raysPerHeightPixel;
-    }
-
     if (SDL_Init(SDL_INIT_VIDEO)) {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Unable to initialize SDL: %s", SDL_GetError());
         return 1;
@@ -70,19 +44,56 @@ int main(int argc, char* argv[]) {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Unable to create window: %s", SDL_GetError());
         return 2;
     }
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+	SDL_GLContext glContext = SDL_GL_CreateContext(window);
+
+	gpuContext* gpuContext = gpu_initContext();
+	if (gpuContext == NULL) {
+		return 1;
+	}
+
+	glEnable(GL_TEXTURE_2D);
+
+	GLuint textureId;
+	glGenTextures(1, &textureId);
+	glBindTexture(GL_TEXTURE_2D, textureId);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+	Image* image = image_create(width, height);
+	cl_mem dev_image = gpu_createImageBufferFromTextureId(gpuContext, textureId);
+
+	Scene* scene = scene_init(width, height);
+	cl_mem dev_camera = gpu_createCameraBuffer(gpuContext, scene);
+	cl_mem dev_materials = gpu_createMaterialsBuffer(gpuContext, scene);
+	cl_mem dev_planes = gpu_createPlanesBuffer(gpuContext, scene);
+	cl_mem dev_spheres = gpu_createSpheresBuffer(gpuContext, scene);
+	cl_mem dev_triangles = gpu_createTrianglesBuffer(gpuContext, scene);
+	cl_mem dev_pointLights = gpu_createPointLightsBuffer(gpuContext, scene);
+
+	float rayColorContribution = 1.0f / (float)raysPerPixel;
+
+	float pixelWidth = 1.0f / (float)width;
+	float pixelHeight = 1.0f / (float)height;
+	float rootTerm = sqrtf(pixelWidth / pixelHeight * raysPerPixel + powf(pixelWidth - pixelHeight, 2) / 4 * powf(pixelHeight, 2));
+	uint32_t raysPerWidthPixel = 1;
+	uint32_t raysPerHeightPixel = 1;
+	float deltaX = pixelWidth;
+	float deltaY = pixelHeight;
+	if (raysPerPixel > 1) {
+		raysPerWidthPixel = (uint32_t)(rootTerm - (pixelWidth - pixelHeight / 2 * pixelHeight));
+		raysPerHeightPixel = (uint32_t)(raysPerPixel / raysPerWidthPixel);
+		deltaX = pixelWidth / raysPerWidthPixel;
+		deltaY = pixelHeight / raysPerHeightPixel;
+	}
 
     cl_kernel raytrace_kernel = clCreateKernel(gpuContext->prog, "raytrace", &gpuContext->err);
     if (gpuContext->err != CL_SUCCESS) {
         printf("Couldn't create kernel raytrace.\n");
         return 1;
     }
-
-	SDL_Surface* surface =
-		SDL_CreateRGBSurfaceFrom((void*)image->buffer, (int)image->width, (int)image->height, 32,
-		(int)(sizeof(uint32_t) * image->width), 0xFFu << 16, 0xFFu << 8, 0xFFu, 0xFFu << 24);
-	SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-	SDL_FreeSurface(surface);
 
     gpuContext->err = clSetKernelArg(raytrace_kernel, 0, sizeof(cl_mem), &dev_camera);
     gpuContext->err |= clSetKernelArg(raytrace_kernel, 1, sizeof(cl_mem), &dev_materials);
@@ -154,22 +165,46 @@ int main(int argc, char* argv[]) {
 		clEnqueueWriteBuffer(gpuContext->command_queue, dev_camera, CL_TRUE, 0, sizeof(Camera), scene->camera, 0, NULL, NULL);
 		gpuContext->err = clSetKernelArg(raytrace_kernel, 0, sizeof(cl_mem), &dev_camera);
 		const size_t threadsPerDim[2] = { width, height };
+		glFinish();
+		clEnqueueAcquireGLObjects(gpuContext->command_queue, 1, &dev_image, 0, NULL, NULL);
 		gpuContext->err = clEnqueueNDRangeKernel(gpuContext->command_queue, raytrace_kernel, 2, NULL, threadsPerDim, NULL, 0, NULL, NULL);
 		if (gpuContext->err != CL_SUCCESS) {
 			printf("Couldn't enqueue kernel.\n");
 			return 1;
 		}
+		clEnqueueReleaseGLObjects(gpuContext->command_queue, 1, &dev_image, 0, NULL, NULL);
+		clFinish(gpuContext->command_queue);
 
 		// Copy back from device
-		clEnqueueReadBuffer(gpuContext->command_queue, dev_image, CL_TRUE, 0, sizeof(uint32_t) * image->width * image->height, image->buffer, 0, NULL, NULL);
+		// clEnqueueReadBuffer(gpuContext->command_queue, dev_image, CL_TRUE, 0, sizeof(uint32_t) * image->width * image->height, image->buffer, 0, NULL, NULL);
 
-		renderImage(renderer, texture, image);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		glBindTexture(GL_TEXTURE_2D, textureId);
+		glBegin(GL_QUADS);
+
+		glTexCoord2f(0.0f, 1.0f);
+		glVertex2f(-1.0f, -1.0f);
+
+		glTexCoord2f(0.0f, 0.0f);
+		glVertex2f(-1.0f, 1.0f);
+		
+		glTexCoord2f(1.0f, 0.0f);
+		glVertex2f(1.0f, 1.0f);
+		
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex2f(1.0f, -1.0f);
+
+		glEnd();
+		glBindTexture(GL_TEXTURE_2D, 0);
+
+		SDL_GL_SwapWindow(window);
     }
 
-    bitmap_save_image("test.bmp", image);
+	// bitmap_save_image("test.bmp", image);
     
-	SDL_DestroyTexture(texture);
-    SDL_DestroyRenderer(renderer);
+	SDL_GL_DeleteContext(glContext);
     SDL_DestroyWindow(window);
     SDL_Quit();
 

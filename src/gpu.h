@@ -1,11 +1,21 @@
 #ifndef RAYTRACER_GPU_H
 #define RAYTRACER_GPU_H
 
+#ifdef WIN32
+// this is sadly required for <gl/gl.h> to compile...
+// it defines some weird windows macro thingy
+#include <windows.h>
+#endif
+
+#include <gl/GL.h>
+
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>
 #else
 #include <CL/cl.h>
 #endif
+
+#include <CL/cl_gl.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -28,7 +38,20 @@ gpuContext* gpu_initContext() {
     gpuContext* context = malloc(sizeof(gpuContext));
     clGetPlatformIDs(1, &context->plat, NULL);
     clGetDeviceIDs(context->plat, CL_DEVICE_TYPE_GPU, 1, &context->dev, NULL);
-    context->ctx = clCreateContext(0, 1, &context->dev, NULL, NULL, &context->err);
+
+	/*
+	 * These properties are required for the OpenGL <-> OpenCL interop
+	 * Note: The OpenGL context needs to be created before creating the OpenCL context.
+	 */
+#ifdef WIN32
+	cl_context_properties props[] = { 
+		CL_GL_CONTEXT_KHR, (cl_context_properties)wglGetCurrentContext(), 
+		CL_WGL_HDC_KHR, (cl_context_properties)wglGetCurrentDC(), 
+		CL_CONTEXT_PLATFORM, (cl_context_properties)context->plat, 
+		0 };
+#endif
+
+    context->ctx = clCreateContext(props, 1, &context->dev, NULL, NULL, &context->err);
     context->command_queue = clCreateCommandQueue(context->ctx, context->dev, 0, &context->err);
 
     size_t sourceSize = 0;
@@ -59,8 +82,8 @@ gpuContext* gpu_initContext() {
     return context;
 }
 
-cl_mem gpu_createImageBuffer(gpuContext* context, Image* image) {
-    cl_mem dev_image = clCreateBuffer(context->ctx, CL_MEM_WRITE_ONLY, sizeof(uint32_t) * image->width * image->height, NULL, &context->err);
+cl_mem gpu_createImageBufferFromTextureId(gpuContext* context, GLuint textureId) {
+	cl_mem dev_image = clCreateFromGLTexture(context->ctx, CL_MEM_WRITE_ONLY, GL_TEXTURE_2D, 0, textureId, &context->err);
     if (context->err != CL_SUCCESS) {
         printf("Couldn't create dev_image.\n");
         return NULL;

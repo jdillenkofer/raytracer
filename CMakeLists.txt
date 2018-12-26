@@ -12,6 +12,9 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/modules")
 find_package(SDL2 REQUIRED COMPONENTS main)
 include_directories(${SDL2_INCLUDE_DIRS} ${SDL2main_INCLUDE_DIRS})
 
+# find OpenGL
+find_package(OpenGL REQUIRED)
+include_directories(${OPENGL_INCLUDE_DIR})
 
 if (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "CLANG"))
     set(CMAKE_C_FLAGS
@@ -89,7 +92,7 @@ if (UNIX)
 	target_link_libraries(${EXECUTABLE_NAME} m)
 endif (UNIX)
 
-target_link_libraries(${EXECUTABLE_NAME} ${SDL2_LIBS} ${OpenCL_LIBRARY})
+target_link_libraries(${EXECUTABLE_NAME} ${SDL2_LIBS} ${OpenCL_LIBRARY} ${OPENGL_LIBRARIES})
 add_custom_command(TARGET raytracer POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/kernel.cl ${CMAKE_BINARY_DIR}/kernel.cl)
 # Copy SDL2 DLLs to output folder on Windows
 if(WIN32)
