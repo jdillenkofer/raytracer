@@ -1,4 +1,8 @@
 #include <float.h>
+
+#include <glad/glad.h>
+#include <SDL2/SDL.h>
+
 #include "utils/image.h"
 #include "utils/vec3.h"
 #include "camera.h"
@@ -6,22 +10,49 @@
 #include "raytracer.h"
 #include "gpu.h"
 
-#include <SDL2/SDL.h>
 #ifdef WIN32
 // this is sadly required for <gl/gl.h> to compile...
 // it defines some weird windows macro thingy
 #include <windows.h>
 #endif
-#include <GL/gl.h>
 #include "utils/random.h"
 #include "utils/math.h"
 
-void renderImage(SDL_Renderer *renderer, SDL_Texture* texture, Image* image) {
-	SDL_UpdateTexture(texture, NULL, image->buffer, (int)(sizeof(uint32_t) * image->width));
-	SDL_RenderClear(renderer);
-	SDL_RenderCopy(renderer, texture, NULL, NULL);
-    SDL_RenderPresent(renderer);
-}
+float vertices[] = {
+	// VERTEX POS; TEXTURE POS
+	 1.0f,  1.0f, 1.0f, 0.0f, // top right
+	 1.0f, -1.0f, 1.0f, 1.0f, // bottom right
+	-1.0f, -1.0f, 0.0f, 1.0f, // bottom left
+	-1.0f,  1.0f, 0.0f, 0.0f, // top left
+};
+
+uint32_t indices[] = {
+	0, 1, 3, // first triangle
+	1, 2, 3  // second triangle
+};
+
+const char* vertexShader =
+"#version 330 core\n"
+"layout(location = 0) in vec2 position;\n"
+"layout(location = 1) in vec2 textureCoords;\n"
+"\n"
+"smooth out vec2 texel;\n"
+"\n"
+"void main(){\n"
+"	texel = textureCoords;\n"
+"   gl_Position = vec4(position, 0.0, 1.0);\n"
+"}\n";
+
+const char* fragmentShader =
+"#version 330 core\n"
+"uniform sampler2D texture1;\n"
+"smooth in vec2 texel;\n"
+"\n"
+"layout(location = 0) out vec4 color;\n"
+"\n"
+"void main(){\n"
+"   color = texture(texture1, texel);\n"
+"}\n";
 
 int main(int argc, char* argv[]) {
     (void) argc;
@@ -30,7 +61,7 @@ int main(int argc, char* argv[]) {
     uint32_t width = 1920;
     uint32_t height = 1080;
 	uint32_t raysPerPixel = 1;
-	double MS_PER_UPDATE = 1000.0 / 120.0;
+	double MS_PER_UPDATE = 1000.0 / 60.0;
 	float CAMERA_ROTATION_SPEED = 0.05f;
 
     if (SDL_Init(SDL_INIT_VIDEO)) {
@@ -38,18 +69,57 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE); //OpenGL core profile
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+
     SDL_Window* window = SDL_CreateWindow("Raytracer",
             SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, (int32_t) width, (int32_t) height, SDL_WINDOW_OPENGL);
     if (!window) {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Unable to create window: %s", SDL_GetError());
         return 2;
     }
+
 	SDL_GLContext glContext = SDL_GL_CreateContext(window);
+	SDL_GL_SetSwapInterval(1);
+
+	if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
+		SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Failed to initialize GLAD.");
+		return 2;
+	}
 
 	gpuContext* gpuContext = gpu_initContext();
 	if (gpuContext == NULL) {
 		return 1;
 	}
+
+	uint32_t VBO;
+	glGenBuffers(1, &VBO);
+
+	unsigned int EBO;
+	glGenBuffers(1, &EBO);
+
+	unsigned int VAO;
+	glGenVertexArrays(1, &VAO);
+
+	// GL Initialization code
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	glBindVertexArray(0);
 
 	glEnable(GL_TEXTURE_2D);
 
@@ -59,8 +129,20 @@ int main(int argc, char* argv[]) {
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+
+	uint32_t shaderProgram = gpu_compileShaderProgram(vertexShader, fragmentShader);
+	
+	// set the drawing state once
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glUseProgram(shaderProgram);
+	glBindVertexArray(VAO);
+
+	GLint texture1Loc = glGetUniformLocation(shaderProgram, "texture1");
+	glUniform1i(texture1Loc, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, textureId);
 
 	Image* image = image_create(width, height);
 	cl_mem dev_image = gpu_createImageBufferFromTextureId(gpuContext, textureId);
@@ -165,7 +247,6 @@ int main(int argc, char* argv[]) {
 		clEnqueueWriteBuffer(gpuContext->command_queue, dev_camera, CL_TRUE, 0, sizeof(Camera), scene->camera, 0, NULL, NULL);
 		gpuContext->err = clSetKernelArg(raytrace_kernel, 0, sizeof(cl_mem), &dev_camera);
 		const size_t threadsPerDim[2] = { width, height };
-		glFinish();
 		clEnqueueAcquireGLObjects(gpuContext->command_queue, 1, &dev_image, 0, NULL, NULL);
 		gpuContext->err = clEnqueueNDRangeKernel(gpuContext->command_queue, raytrace_kernel, 2, NULL, threadsPerDim, NULL, 0, NULL, NULL);
 		if (gpuContext->err != CL_SUCCESS) {
@@ -177,11 +258,12 @@ int main(int argc, char* argv[]) {
 
 		// Copy back from device
 		// clEnqueueReadBuffer(gpuContext->command_queue, dev_image, CL_TRUE, 0, sizeof(uint32_t) * image->width * image->height, image->buffer, 0, NULL, NULL);
+		
 
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-
-		glBindTexture(GL_TEXTURE_2D, textureId);
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		
+		/*
 		glBegin(GL_QUADS);
 
 		glTexCoord2f(0.0f, 1.0f);
@@ -198,6 +280,7 @@ int main(int argc, char* argv[]) {
 
 		glEnd();
 		glBindTexture(GL_TEXTURE_2D, 0);
+		*/
 
 		SDL_GL_SwapWindow(window);
     }

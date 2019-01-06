@@ -47,6 +47,7 @@ if (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" S
 endif ()
 
 include_directories(src/)
+include_directories(vendor/glad/include)
 
 set(SOURCE_FILES
         src/main.c
@@ -61,7 +62,8 @@ set(SOURCE_FILES
         src/raytracer.c
 		src/object.c
 		src/vertextable.c
-		src/kernel.cl)
+		src/kernel.cl
+		vendor/glad/src/glad.c)
 
 set(HEADER_FILES
         src/utils/vec3.h
@@ -80,7 +82,9 @@ set(HEADER_FILES
         src/pointlight.h
 		src/object.h
 		src/vertextable.h 
-		src/gpu.h)
+		src/gpu.h
+		vendor/glad/include/glad/glad.h
+		vendor/glad/include/KHR/khrplatform.h)
 
 find_package(OpenCL REQUIRED)
 include_directories(${OpenCL_INCLUDE_DIRS})
@@ -93,7 +97,7 @@ if (UNIX)
 endif (UNIX)
 
 target_link_libraries(${EXECUTABLE_NAME} ${SDL2_LIBS} ${OpenCL_LIBRARY} ${OPENGL_LIBRARIES})
-add_custom_command(TARGET raytracer POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/src/kernel.cl ${CMAKE_BINARY_DIR}/kernel.cl)
+add_custom_command(TARGET raytracer POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different ${PROJECT_SOURCE_DIR}/src/kernel.cl ${CMAKE_BINARY_DIR}/kernel.cl)
 # Copy SDL2 DLLs to output folder on Windows
 if(WIN32)
     foreach(DLL ${SDL2_DLLS})
