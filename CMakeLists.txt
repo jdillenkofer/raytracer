@@ -93,7 +93,7 @@ link_directories(${OpenCL_LIBRARY})
 add_executable(raytracer ${SOURCE_FILES} ${HEADER_FILES})
 
 if (UNIX)
-	target_link_libraries(${EXECUTABLE_NAME} m)
+	target_link_libraries(${EXECUTABLE_NAME} m dl)
 endif (UNIX)
 
 target_link_libraries(${EXECUTABLE_NAME} ${SDL2_LIBS} ${OpenCL_LIBRARY} ${OPENGL_LIBRARIES})
