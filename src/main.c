@@ -56,8 +56,8 @@ int main(int argc, char* argv[]) {
     uint32_t width = 1920;
     uint32_t height = 1080;
 	uint32_t raysPerPixel = 1;
-	double MS_PER_UPDATE = 1000.0 / 60.0;
-	float CAMERA_ROTATION_SPEED = 0.05f;
+	double MS_PER_UPDATE = 1000.0 / 30.0;
+	float CAMERA_ROTATION_SPEED = 0.1f;
 
     if (SDL_Init(SDL_INIT_VIDEO)) {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Unable to initialize SDL: %s", SDL_GetError());
@@ -79,7 +79,11 @@ int main(int argc, char* argv[]) {
     }
 
 	SDL_GLContext glContext = SDL_GL_CreateContext(window);
-	SDL_GL_SetSwapInterval(1);
+	// try to set adaptive swap interval
+	if (SDL_GL_SetSwapInterval(-1) != 0) {
+		// if this is not supported, try to enable vsync
+		SDL_GL_SetSwapInterval(1);
+	}
 
 	if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress)) {
 		SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Failed to initialize GLAD.");
@@ -139,7 +143,6 @@ int main(int argc, char* argv[]) {
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureId);
 
-	Image* image = image_create(width, height);
 	cl_mem dev_image = gpu_createImageBufferFromTextureId(gpuContext, textureId);
 
 	Scene* scene = scene_init(width, height);
@@ -239,6 +242,7 @@ int main(int argc, char* argv[]) {
 		}
 
 		// render
+		glFinish();
 		clEnqueueWriteBuffer(gpuContext->command_queue, dev_camera, CL_TRUE, 0, sizeof(Camera), scene->camera, 0, NULL, NULL);
 		gpuContext->err = clSetKernelArg(raytrace_kernel, 0, sizeof(cl_mem), &dev_camera);
 		const size_t threadsPerDim[2] = { width, height };
@@ -251,43 +255,16 @@ int main(int argc, char* argv[]) {
 		clEnqueueReleaseGLObjects(gpuContext->command_queue, 1, &dev_image, 0, NULL, NULL);
 		clFinish(gpuContext->command_queue);
 
-		// Copy back from device
-		// clEnqueueReadBuffer(gpuContext->command_queue, dev_image, CL_TRUE, 0, sizeof(uint32_t) * image->width * image->height, image->buffer, 0, NULL, NULL);
-		
-
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-		glFinish();
 		
-		/*
-		glBegin(GL_QUADS);
-
-		glTexCoord2f(0.0f, 1.0f);
-		glVertex2f(-1.0f, -1.0f);
-
-		glTexCoord2f(0.0f, 0.0f);
-		glVertex2f(-1.0f, 1.0f);
-		
-		glTexCoord2f(1.0f, 0.0f);
-		glVertex2f(1.0f, 1.0f);
-		
-		glTexCoord2f(1.0f, 1.0f);
-		glVertex2f(1.0f, -1.0f);
-
-		glEnd();
-		glBindTexture(GL_TEXTURE_2D, 0);
-		*/
-
 		SDL_GL_SwapWindow(window);
     }
-
-	// bitmap_save_image("test.bmp", image);
     
 	SDL_GL_DeleteContext(glContext);
     SDL_DestroyWindow(window);
     SDL_Quit();
 
-    image_destroy(image);
     scene_destroy(scene);
     clReleaseKernel(raytrace_kernel);
     clReleaseMemObject(dev_camera);
