@@ -56,8 +56,9 @@ int main(int argc, char* argv[]) {
     uint32_t width = 1920;
     uint32_t height = 1080;
 	uint32_t raysPerPixel = 1;
-	double MS_PER_UPDATE = 1000.0 / 30.0;
-	float CAMERA_ROTATION_SPEED = 0.1f;
+	double MS_PER_UPDATE = 1000.0 / 120.0;
+	// degrees per tick
+	float CAMERA_ROTATION_SPEED = 0.25f;
 
     if (SDL_Init(SDL_INIT_VIDEO)) {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Unable to initialize SDL: %s", SDL_GetError());
