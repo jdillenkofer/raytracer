@@ -10,11 +10,6 @@
 #include "raytracer.h"
 #include "gpu.h"
 
-#ifdef WIN32
-// this is sadly required for <gl/gl.h> to compile...
-// it defines some weird windows macro thingy
-#include <windows.h>
-#endif
 #include "utils/random.h"
 #include "utils/math.h"
 
@@ -74,7 +69,7 @@ int main(int argc, char* argv[]) {
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
 
     SDL_Window* window = SDL_CreateWindow("Raytracer",
             SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, (int32_t) width, (int32_t) height, SDL_WINDOW_OPENGL);
@@ -262,6 +257,7 @@ int main(int argc, char* argv[]) {
 
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glFinish();
 		
 		/*
 		glBegin(GL_QUADS);

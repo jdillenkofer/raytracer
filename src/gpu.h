@@ -1,12 +1,6 @@
 #ifndef RAYTRACER_GPU_H
 #define RAYTRACER_GPU_H
 
-#ifdef WIN32
-// this is sadly required for <gl/gl.h> to compile...
-// it defines some weird windows macro thingy
-#include <windows.h>
-#endif
-
 #ifdef __linux__
 #include <GL/glx.h>
 #endif

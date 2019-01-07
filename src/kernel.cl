@@ -533,7 +533,8 @@ __kernel void raytrace(__global Camera* camera, __global Material* materials, ui
    // and use hdr to map it back to the [0.0, 1.0] range after
    // all pixels are calculated
    // this would avoid that really bright areas look the 
-   // same color = vec3_clamp(color, 0.0f, 1.0f);
+   // same 
+   color = vec3_clamp(color, 0.0f, 1.0f);
    int2 pixelcoord;
    pixelcoord.x = x;
    pixelcoord.y = y;
