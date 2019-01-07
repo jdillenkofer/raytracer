@@ -42,8 +42,7 @@ if (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" S
      -Wswitch \
      -fno-common \
      -pedantic \
-     -std=c11 \
-     -O3")
+     -std=c11")
 endif ()
 
 include_directories(src/)

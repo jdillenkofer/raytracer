@@ -13,6 +13,21 @@
 #include "utils/random.h"
 #include "utils/math.h"
 
+#define MS_PER_UPDATE 1000.0 / 120.0
+
+// degrees per tick
+#define CAMERA_ROTATION_SPEED 0.25f;
+
+#define RENDER_WIDTH  1920
+#define RENDER_HEIGHT 1080
+
+#define RENDER_ASPECTRATIO (RENDER_WIDTH / (float)RENDER_HEIGHT)
+
+uint32_t viewWidth = RENDER_WIDTH;
+uint32_t viewHeight = RENDER_HEIGHT;
+
+uint32_t raysPerPixel = 1;
+
 float vertices[] = {
 	// VERTEX POS; TEXTURE POS
 	 1.0f,  1.0f, 1.0f, 0.0f, // top right
@@ -30,12 +45,13 @@ const char* vertexShader =
 "#version 330 core\n"
 "layout(location = 0) in vec2 position;\n"
 "layout(location = 1) in vec2 textureCoords;\n"
+"uniform vec2 scale;\n"
 "\n"
 "smooth out vec2 texel;\n"
 "\n"
 "void main(){\n"
 "	texel = textureCoords;\n"
-"   gl_Position = vec4(position, 0.0, 1.0);\n"
+"   gl_Position = vec4(scale * position, 0.0, 1.0);\n"
 "}\n";
 
 const char* fragmentShader =
@@ -53,13 +69,6 @@ int main(int argc, char* argv[]) {
     (void) argc;
     (void) argv;
 
-    uint32_t width = 1920;
-    uint32_t height = 1080;
-	uint32_t raysPerPixel = 1;
-	double MS_PER_UPDATE = 1000.0 / 120.0;
-	// degrees per tick
-	float CAMERA_ROTATION_SPEED = 0.25f;
-
     if (SDL_Init(SDL_INIT_VIDEO)) {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Unable to initialize SDL: %s", SDL_GetError());
         return 1;
@@ -73,7 +82,7 @@ int main(int argc, char* argv[]) {
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
 
     SDL_Window* window = SDL_CreateWindow("Raytracer",
-            SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, (int32_t) width, (int32_t) height, SDL_WINDOW_OPENGL);
+            SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, RENDER_WIDTH, RENDER_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     if (!window) {
         SDL_LogError(SDL_LOG_CATEGORY_SYSTEM, "Unable to create window: %s", SDL_GetError());
         return 2;
@@ -126,7 +135,7 @@ int main(int argc, char* argv[]) {
 	GLuint textureId;
 	glGenTextures(1, &textureId);
 	glBindTexture(GL_TEXTURE_2D, textureId);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, RENDER_WIDTH, RENDER_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
@@ -144,9 +153,14 @@ int main(int argc, char* argv[]) {
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, textureId);
 
+	// initially no scaling is required, because renderAspectRatio is the same as viewAspectRatio
+	GLint scaleLoc = glGetUniformLocation(shaderProgram, "scale");
+	glUniform2f(scaleLoc, 1.0f, 1.0f);
+	glViewport(0, 0, viewWidth, viewHeight);
+
 	cl_mem dev_image = gpu_createImageBufferFromTextureId(gpuContext, textureId);
 
-	Scene* scene = scene_init(width, height);
+	Scene* scene = scene_init(RENDER_WIDTH, RENDER_HEIGHT);
 	cl_mem dev_camera = gpu_createCameraBuffer(gpuContext, scene);
 	cl_mem dev_materials = gpu_createMaterialsBuffer(gpuContext, scene);
 	cl_mem dev_planes = gpu_createPlanesBuffer(gpuContext, scene);
@@ -156,8 +170,8 @@ int main(int argc, char* argv[]) {
 
 	float rayColorContribution = 1.0f / (float)raysPerPixel;
 
-	float pixelWidth = 1.0f / (float)width;
-	float pixelHeight = 1.0f / (float)height;
+	float pixelWidth = 1.0f / (float) RENDER_WIDTH;
+	float pixelHeight = 1.0f / (float) RENDER_HEIGHT;
 	float rootTerm = sqrtf(pixelWidth / pixelHeight * raysPerPixel + powf(pixelWidth - pixelHeight, 2) / 4 * powf(pixelHeight, 2));
 	uint32_t raysPerWidthPixel = 1;
 	uint32_t raysPerHeightPixel = 1;
@@ -202,16 +216,17 @@ int main(int argc, char* argv[]) {
 
     // wait for quit event before quitting
     bool running = true;
-	uint32_t lastTime = SDL_GetTicks();
+
+	uint32_t previousTime = SDL_GetTicks();
 	double delta = 0.0;
 
 	float deg = 0;
 
     while(running) {
 
-		uint32_t current = SDL_GetTicks();
-		uint32_t elapsed = current - lastTime;
-		lastTime = current;
+		uint32_t currentTime = SDL_GetTicks();
+		uint32_t elapsed = currentTime - previousTime;
+		previousTime = currentTime;
 		delta += elapsed;
 
 		// input handling
@@ -221,14 +236,55 @@ int main(int argc, char* argv[]) {
                 case SDL_QUIT:
                     running = false;
                     break;
+				case SDL_WINDOWEVENT:
+					switch (event.window.event) {
+					case SDL_WINDOWEVENT_SIZE_CHANGED:
+					case SDL_WINDOWEVENT_RESIZED:
+						// onResize: recalculate the scaling
+						viewWidth = event.window.data1;
+						viewHeight = event.window.data2;
+						float xScale = 1.0f;
+						float yScale = 1.0f;
+						float viewAspectRatio = viewWidth / (float)viewHeight;
+						if (RENDER_ASPECTRATIO > viewAspectRatio) {
+							yScale = viewAspectRatio / RENDER_ASPECTRATIO;
+						}
+						else {
+							xScale = RENDER_ASPECTRATIO / viewAspectRatio;
+						}
+						glUniform2f(scaleLoc, xScale, yScale);
+						glViewport(0, 0, viewWidth, viewHeight);
+						break;
+					default:
+						break;
+					}
+					break;
+				case SDL_KEYDOWN:
+					switch (event.key.keysym.sym) {
+					case SDLK_w:
+						break;
+					case SDLK_s:
+						break;
+					case SDLK_a:
+						break;
+					case SDLK_d:
+						break;
+					case SDLK_ESCAPE:
+						running = false;
+						break;
+					default:
+						break;
+					}
+					break;
+				case SDL_KEYUP:
+					break;
                 default:
                     break;
             }
         }
 
+		// update
 		while (delta >= MS_PER_UPDATE) {
-			// update
-
 			// move the camera in a circle around the origin
 			float radius = 40.0f;
 			scene->camera->position.x = radius * cosf(math_deg2rad(deg));
@@ -246,7 +302,7 @@ int main(int argc, char* argv[]) {
 		glFinish();
 		clEnqueueWriteBuffer(gpuContext->command_queue, dev_camera, CL_TRUE, 0, sizeof(Camera), scene->camera, 0, NULL, NULL);
 		gpuContext->err = clSetKernelArg(raytrace_kernel, 0, sizeof(cl_mem), &dev_camera);
-		const size_t threadsPerDim[2] = { width, height };
+		const size_t threadsPerDim[2] = { RENDER_WIDTH, RENDER_HEIGHT};
 		clEnqueueAcquireGLObjects(gpuContext->command_queue, 1, &dev_image, 0, NULL, NULL);
 		gpuContext->err = clEnqueueNDRangeKernel(gpuContext->command_queue, raytrace_kernel, 2, NULL, threadsPerDim, NULL, 0, NULL, NULL);
 		if (gpuContext->err != CL_SUCCESS) {
