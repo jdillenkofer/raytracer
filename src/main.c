@@ -191,24 +191,30 @@ int main(int argc, char* argv[]) {
     }
 
     gpuContext->err = clSetKernelArg(raytrace_kernel, 0, sizeof(cl_mem), &dev_camera);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 1, sizeof(cl_mem), &dev_materials);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 2, sizeof(uint32_t), &scene->materialCount);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 3, sizeof(cl_mem), &dev_planes);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 4, sizeof(uint32_t), &scene->planeCount);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 5, sizeof(cl_mem), &dev_spheres);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 6, sizeof(uint32_t), &scene->sphereCount);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 7, sizeof(cl_mem), &dev_triangles);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 8, sizeof(uint32_t), &scene->triangleCount);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 9, sizeof(cl_mem), &dev_pointLights);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 10, sizeof(uint32_t), &scene->pointLightCount);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 11, sizeof(cl_mem), &dev_image);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 12, sizeof(float), &rayColorContribution);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 13, sizeof(float), &deltaX);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 14, sizeof(float), &deltaY);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 15, sizeof(float), &pixelWidth);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 16, sizeof(float), &pixelHeight);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 17, sizeof(uint32_t), &raysPerWidthPixel);
-    gpuContext->err |= clSetKernelArg(raytrace_kernel, 18, sizeof(uint32_t), &raysPerHeightPixel);
+	gpuContext->err |= clSetKernelArg(raytrace_kernel, 1, sizeof(Camera), NULL); // sharedMemory camera
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 2, sizeof(cl_mem), &dev_materials);
+	gpuContext->err |= clSetKernelArg(raytrace_kernel, 3, sizeof(Material) * scene->materialCount, NULL); // sharedMemory materials
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 4, sizeof(uint32_t), &scene->materialCount);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 5, sizeof(cl_mem), &dev_planes);
+	gpuContext->err |= clSetKernelArg(raytrace_kernel, 6, sizeof(Plane) * scene->planeCount, NULL); // sharedMemory planes
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 7, sizeof(uint32_t), &scene->planeCount);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 8, sizeof(cl_mem), &dev_spheres);
+	gpuContext->err |= clSetKernelArg(raytrace_kernel, 9, sizeof(Sphere) * scene->sphereCount, NULL); // sharedMemory spheres
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 10, sizeof(uint32_t), &scene->sphereCount);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 11, sizeof(cl_mem), &dev_triangles);
+	gpuContext->err |= clSetKernelArg(raytrace_kernel, 12, sizeof(Triangle) * scene->triangleCount, NULL); // sharedMemory triangles
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 13, sizeof(uint32_t), &scene->triangleCount);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 14, sizeof(cl_mem), &dev_pointLights);
+	gpuContext->err |= clSetKernelArg(raytrace_kernel, 15, sizeof(PointLight) * scene->pointLightCount, NULL); // sharedMemory pointLights
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 16, sizeof(uint32_t), &scene->pointLightCount);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 17, sizeof(cl_mem), &dev_image);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 18, sizeof(float), &rayColorContribution);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 19, sizeof(float), &deltaX);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 20, sizeof(float), &deltaY);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 21, sizeof(float), &pixelWidth);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 22, sizeof(float), &pixelHeight);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 23, sizeof(uint32_t), &raysPerWidthPixel);
+    gpuContext->err |= clSetKernelArg(raytrace_kernel, 24, sizeof(uint32_t), &raysPerHeightPixel);
     if (gpuContext->err != CL_SUCCESS) {
         printf("Couldn't set all kernel args correctly.\n");
         return 1;

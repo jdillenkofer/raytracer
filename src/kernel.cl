@@ -1,3 +1,47 @@
+#define USE_SHARED_MEMORY
+#define USE_SHARED_MEMORY_CAMERA
+#define USE_SHARED_MEMORY_MATERIALS
+#define USE_SHARED_MEMORY_PLANES
+#define USE_SHARED_MEMORY_SPHERES
+#define USE_SHARED_MEMORY_TRIANGLES
+#define USE_SHARED_MEMORY_POINTLIGHTS
+
+#ifdef USE_SHARED_MEMORY_CAMERA
+	#define CAMERA_QUALIFIER __local
+#else
+	#define CAMERA_QUALIFIER __global
+#endif
+
+#ifdef USE_SHARED_MEMORY_MATERIALS
+#define MATERIALS_QUALIFIER __local
+#else
+#define MATERIALS_QUALIFIER __global
+#endif
+
+#ifdef USE_SHARED_MEMORY_PLANES
+#define PLANES_QUALIFIER __local
+#else
+#define PLANES_QUALIFIER __global
+#endif
+
+#ifdef USE_SHARED_MEMORY_SPHERES
+#define SPHERES_QUALIFIER __local
+#else
+#define SPHERES_QUALIFIER __global
+#endif
+
+#ifdef USE_SHARED_MEMORY_TRIANGLES
+#define TRIANGLES_QUALIFIER __local
+#else
+#define TRIANGLES_QUALIFIER __global
+#endif
+
+#ifdef USE_SHARED_MEMORY_POINTLIGHTS
+#define POINTLIGHTS_QUALIFIER __local
+#else
+#define POINTLIGHTS_QUALIFIER __global
+#endif
+
 #define uint32_t uint
 #define PI 3.14159265358979323846f
 
@@ -241,7 +285,7 @@ static void raytracer_moveRayOutOfObject(Ray* ray) {
     ray->origin = vec3_add(ray->origin, vec3_mul(ray->direction, 1.0f/1000.0f));
 }
 
-static bool raytracer_intersectPlane(__global Plane* plane, Ray* ray, float* hitDistance, Vec3* intersectionNormal) {
+static bool raytracer_intersectPlane(PLANES_QUALIFIER Plane* plane, Ray* ray, float* hitDistance, Vec3* intersectionNormal) {
         // We use the \Hesse normal form\:
         //     normal * p - distanceFromOrigin = 0
         // to describe our planes
@@ -259,7 +303,7 @@ static bool raytracer_intersectPlane(__global Plane* plane, Ray* ray, float* hit
         return false;
 }
 
-static bool raytracer_intersectSphere(__global Sphere* sphere, Ray* ray, float* hitDistance, Vec3* intersectionNormal) {
+static bool raytracer_intersectSphere(SPHERES_QUALIFIER Sphere* sphere, Ray* ray, float* hitDistance, Vec3* intersectionNormal) {
         Vec3 sphereRelativeOrigin = vec3_sub(ray->origin, sphere->position);
 
         // Mitternachtsformel
@@ -289,7 +333,7 @@ static bool raytracer_intersectSphere(__global Sphere* sphere, Ray* ray, float* 
         return false;
 }
 
-static bool raytracer_intersectTriangle(__global Triangle* triangle, Ray* ray, float* hitDistance, Vec3* intersectionNormal) {
+static bool raytracer_intersectTriangle(TRIANGLES_QUALIFIER Triangle* triangle, Ray* ray, float* hitDistance, Vec3* intersectionNormal) {
     Vec3 v0v1 = vec3_sub(triangle->v1, triangle->v0);
     Vec3 v0v2 = vec3_sub(triangle->v2, triangle->v0);
     Vec3 normal = vec3_norm(vec3_cross(v0v1, v0v2));
@@ -334,10 +378,10 @@ static bool raytracer_intersectTriangle(__global Triangle* triangle, Ray* ray, f
     return false;
 }
 
-static void raytracer_calcClosestPlaneIntersect(__global Plane* planes, uint32_t planeCount, Ray* ray, float* minHitDistance, Vec3* intersectionNormal,
+static void raytracer_calcClosestPlaneIntersect(PLANES_QUALIFIER Plane* planes, uint32_t planeCount, Ray* ray, float* minHitDistance, Vec3* intersectionNormal,
                                                 uint32_t* hitMaterialIndex) {
     for (uint32_t i = 0; i < planeCount; i++) {
-        __global Plane* plane = &planes[i];
+		PLANES_QUALIFIER Plane* plane = &planes[i];
         float planeHitDistance = FLT_MAX;
         Vec3 planeIntersectionNormal;
         if (raytracer_intersectPlane(plane, ray, &planeHitDistance, &planeIntersectionNormal)) {
@@ -350,10 +394,10 @@ static void raytracer_calcClosestPlaneIntersect(__global Plane* planes, uint32_t
     }
 }
 
-static void raytracer_calcClosestSphereIntersect(__global Sphere* spheres, uint32_t sphereCount, Ray *ray, float* minHitDistance, Vec3* intersectionNormal,
+static void raytracer_calcClosestSphereIntersect(SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, Ray *ray, float* minHitDistance, Vec3* intersectionNormal,
                                                  uint32_t* hitMaterialIndex) {
     for (uint32_t i = 0; i < sphereCount; i++) {
-        __global Sphere* sphere = &spheres[i];
+		SPHERES_QUALIFIER Sphere* sphere = &spheres[i];
         float sphereHitDistance = FLT_MAX;
         Vec3 sphereIntersectionNormal;
         if (raytracer_intersectSphere(sphere, ray, &sphereHitDistance, &sphereIntersectionNormal)) {
@@ -366,10 +410,10 @@ static void raytracer_calcClosestSphereIntersect(__global Sphere* spheres, uint3
     }
 }
 
-static void raytracer_calcClosestTriangleIntersect(__global Triangle* triangles, uint32_t triangleCount, Ray* ray, float* minHitDistance, Vec3* intersectionNormal,
+static void raytracer_calcClosestTriangleIntersect(TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, Ray* ray, float* minHitDistance, Vec3* intersectionNormal,
                                                    uint32_t* hitMaterialIndex) {
     for (uint32_t i = 0; i < triangleCount; i++) {
-        __global Triangle* triangle = &triangles[i];
+		TRIANGLES_QUALIFIER Triangle* triangle = &triangles[i];
         float triangleHitDistance = FLT_MAX;
         Vec3 triangleIntersectionNormal;
         if (raytracer_intersectTriangle(triangle, ray, &triangleHitDistance, &triangleIntersectionNormal)) {
@@ -382,7 +426,10 @@ static void raytracer_calcClosestTriangleIntersect(__global Triangle* triangles,
     }
 }
 
-static Vec3 raytracer_raycast_helper_0(__global Camera* camera, __global Material* materials, uint32_t materialCount, __global Plane* planes, uint32_t planeCount, __global Sphere* spheres, uint32_t sphereCount, __global Triangle* triangles, uint32_t triangleCount, __global PointLight* pointLights, uint32_t pointLightCount, Ray* primaryRay) {
+static Vec3 raytracer_raycast_helper_0(CAMERA_QUALIFIER Camera* camera, MATERIALS_QUALIFIER Material* materials, uint32_t materialCount, 
+	PLANES_QUALIFIER Plane* planes, uint32_t planeCount, SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, 
+	TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, 
+	POINTLIGHTS_QUALIFIER PointLight* pointLights, uint32_t pointLightCount, Ray* primaryRay) {
 	Vec3 outColor;
 	outColor.r = 0.0f;
 	outColor.g = 0.0f;
@@ -391,9 +438,9 @@ static Vec3 raytracer_raycast_helper_0(__global Camera* camera, __global Materia
 }
 
 #define DEFINE_RAYCAST_HELPER(X, Y) \
-static Vec3 raytracer_raycast_helper_##X(__global Camera* camera, __global Material* materials, uint32_t materialCount, \
-                                     __global Plane* planes, uint32_t planeCount, __global Sphere* spheres, uint32_t sphereCount, \
-									__global Triangle* triangles, uint32_t triangleCount, __global PointLight* pointLights, uint32_t pointLightCount, \
+static Vec3 raytracer_raycast_helper_##X(CAMERA_QUALIFIER Camera* camera, MATERIALS_QUALIFIER Material* materials, uint32_t materialCount, \
+                                    PLANES_QUALIFIER Plane* planes, uint32_t planeCount, SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, \
+									TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, POINTLIGHTS_QUALIFIER PointLight* pointLights, uint32_t pointLightCount, \
 									Ray* primaryRay) { \
 	Vec3 outColor; \
 	outColor.r = 0.0f; \
@@ -408,7 +455,7 @@ static Vec3 raytracer_raycast_helper_##X(__global Camera* camera, __global Mater
 	raytracer_calcClosestTriangleIntersect(triangles, triangleCount, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex); \
 	\
 	if (hitMaterialIndex) { \
-		__global Material* hitMaterial = &materials[hitMaterialIndex]; \
+		MATERIALS_QUALIFIER Material* hitMaterial = &materials[hitMaterialIndex]; \
 		/* if we got a hit, calculate the hitPoint and send a shadow rays to each lightsource */ \
 		Vec3 hitPoint = raytracer_calculateHitpoint(primaryRay, minHitDistance); \
 										\
@@ -448,7 +495,7 @@ static Vec3 raytracer_raycast_helper_##X(__global Camera* camera, __global Mater
 			\
 		/* SHADOWS */ \
 		for (uint32_t i = 0; i < pointLightCount; i++) { \
-			__global PointLight* pointLight = &pointLights[i]; \
+			POINTLIGHTS_QUALIFIER PointLight* pointLight = &pointLights[i]; \
 			Ray shadowRay; \
 			Vec3 hitToLight = vec3_sub(pointLight->position, hitPoint); \
 			/* Vec3 randomOffset = vec3_norm((Vec3) { random_bilateral(), random_bilateral(), random_bilateral()}); */ \
@@ -489,56 +536,106 @@ DEFINE_RAYCAST_HELPER(3, 2);
 DEFINE_RAYCAST_HELPER(4, 3);
 DEFINE_RAYCAST_HELPER(5, 4);
 
-Vec3 raytracer_raycast(__global Camera* camera, __global Material* materials, uint32_t materialCount, __global Plane* planes, uint32_t planeCount, __global Sphere* spheres, uint32_t sphereCount, __global Triangle* triangles, uint32_t triangleCount, __global PointLight* pointLights, uint32_t pointLightCount, Ray* primaryRay) {
+Vec3 raytracer_raycast(CAMERA_QUALIFIER Camera* camera, MATERIALS_QUALIFIER Material* materials, uint32_t materialCount, 
+	PLANES_QUALIFIER Plane* planes, uint32_t planeCount, SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, 
+	TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, POINTLIGHTS_QUALIFIER PointLight* pointLights, uint32_t pointLightCount, Ray* primaryRay) {
     return raytracer_raycast_helper_5(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, primaryRay);
 }
 
 
-__kernel void raytrace(__global Camera* camera, __global Material* materials, uint32_t materialCount, 
-                       __global Plane* planes, uint32_t planeCount, __global Sphere* spheres, uint32_t sphereCount, 
-                       __global Triangle* triangles, uint32_t triangleCount, __global PointLight* pointLights, uint32_t pointLightCount, 
+__kernel void raytrace(__global Camera* camera, __local Camera* sharedCamera, __global Material* materials, __local Material* sharedMaterials, uint32_t materialCount, 
+                       __global Plane* planes, __local Plane* sharedPlanes, uint32_t planeCount, __global Sphere* spheres, __local Sphere* sharedSpheres, uint32_t sphereCount, 
+                       __global Triangle* triangles, __local Triangle* sharedTriangles, uint32_t triangleCount, 
+					   __global PointLight* pointLights, __local PointLight* sharedPointLights, uint32_t pointLightCount, 
 					   __write_only image2d_t image, float rayColorContribution, float deltaX, float deltaY,
                        float pixelWidth, float pixelHeight, uint32_t raysPerWidthPixel, uint32_t raysPerHeightPixel) {
-   uint32_t x = get_global_id(0);
-   uint32_t width = camera->width;
-   uint32_t y = get_global_id(1);
-   float PosX = -1.0f + 2.0f * ((float)x / (camera->width));
-   float PosY = -1.0f + 2.0f * ((float)y / (camera->height));
-   Vec3 color;
-   color.r = 0.0f;
-   color.g = 0.0f;
-   color.b = 0.0f;
-   // Supersampling loops
-   for (uint32_t j = 0; j < raysPerHeightPixel; j++) {
-	   Vec3 OffsetY = vec3_mul(camera->y,
-		   (PosY - pixelHeight + j * deltaY)*camera->renderTargetHeight / 2.0f);
-       for (uint32_t i = 0; i < raysPerWidthPixel; i++) {
-		   Vec3 OffsetX = vec3_mul(camera->x,
-			   (PosX - pixelWidth + i * deltaX)*camera->renderTargetWidth / 2.0f);
-           // (0, 0) is the top left
-		   // so we have to sample the texture with flipped y
-		   Vec3 renderTargetPos = vec3_sub(vec3_add(camera->renderTargetCenter, OffsetX), OffsetY);
-           Ray ray = {
-               camera->position,
-               vec3_norm(vec3_sub(renderTargetPos, camera->position))
-           };
 
-           Vec3 currentRayColor = raytracer_raycast(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &ray);
-           color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
-       }
-   }
+	// copy global data into local shared memory
+#ifdef USE_SHARED_MEMORY
+	if (get_local_id(0)) {
+#ifdef USE_SHARED_MEMORY_CAMERA
+		*sharedCamera = *camera;
+		#define camera sharedCamera
+#endif
+		
+#ifdef USE_SHARED_MEMORY_MATERIALS
+		for (uint32_t i = 0; i < materialCount; i++) {
+			sharedMaterials[i] = materials[i];
+		}
+		#define materials sharedMaterials
+#endif
 
-   // currently values are clamped to [0,1]
-   // in the future we may return floats > 1.0
-   // and use hdr to map it back to the [0.0, 1.0] range after
-   // all pixels are calculated
-   // this would avoid that really bright areas look the 
-   // same 
-   color = vec3_clamp(color, 0.0f, 1.0f);
-   int2 pixelcoord;
-   pixelcoord.x = x;
-   pixelcoord.y = y;
+#ifdef USE_SHARED_MEMORY_PLANES
+		for (uint32_t i = 0; i < planeCount; i++) {
+			sharedPlanes[i] = planes[i];
+		}
+		#define planes sharedPlanes
+#endif
+
+#ifdef USE_SHARED_MEMORY_SPHERES
+		for (uint32_t i = 0; i < sphereCount; i++) {
+			sharedSpheres[i] = spheres[i];
+		}
+		#define spheres sharedSpheres
+#endif
+
+#ifdef USE_SHARED_MEMORY_TRIANGLES
+		for (uint32_t i = 0; i < triangleCount; i++) {
+			sharedTriangles[i] = triangles[i];
+		}
+		#define triangles sharedTriangles
+#endif
+
+#ifdef USE_SHARED_MEMORY_POINTLIGHTS
+		for (uint32_t i = 0; i < pointLightCount; i++) {
+			sharedPointLights[i] = pointLights[i];
+		}
+		#define pointLights sharedPointLights
+#endif
+		barrier(CLK_LOCAL_MEM_FENCE);
+	}
+#endif
+
+    uint32_t x = get_global_id(0);
+    uint32_t width = camera->width;
+    uint32_t y = get_global_id(1);
+    float PosX = -1.0f + 2.0f * ((float)x / (camera->width));
+    float PosY = -1.0f + 2.0f * ((float)y / (camera->height));
+    Vec3 color;
+    color.r = 0.0f;
+    color.g = 0.0f;
+    color.b = 0.0f;
+    // Supersampling loops
+    for (uint32_t j = 0; j < raysPerHeightPixel; j++) {
+	    Vec3 OffsetY = vec3_mul(camera->y,
+			(PosY - pixelHeight + j * deltaY)*camera->renderTargetHeight / 2.0f);
+        for (uint32_t i = 0; i < raysPerWidthPixel; i++) {
+		    Vec3 OffsetX = vec3_mul(camera->x, 
+				(PosX - pixelWidth + i * deltaX)*camera->renderTargetWidth / 2.0f);
+            // (0, 0) is the top left
+		    // so we have to sample the texture with flipped y
+		    Vec3 renderTargetPos = vec3_sub(vec3_add(camera->renderTargetCenter, OffsetX), OffsetY);
+            Ray ray = {
+                camera->position,
+                vec3_norm(vec3_sub(renderTargetPos, camera->position))
+            };
+
+            Vec3 currentRayColor = raytracer_raycast(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &ray);
+            color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
+        }
+    }
+
+    // currently values are clamped to [0,1]
+    // in the future we may return floats > 1.0
+    // and use hdr to map it back to the [0.0, 1.0] range after
+    // all pixels are calculated
+    // this would avoid that really bright areas look the 
+    // same 
+    color = vec3_clamp(color, 0.0f, 1.0f);
+    int2 pixelcoord;
+    pixelcoord.x = x;
+    pixelcoord.y = y;
    
-   float4 pixel = (float4) (color.r, color.g, color.b, 1.0f);
-   write_imagef(image, pixelcoord, pixel);
+    float4 pixel = (float4) (color.r, color.g, color.b, 1.0f);
+    write_imagef(image, pixelcoord, pixel);
 };
