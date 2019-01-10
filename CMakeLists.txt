@@ -61,6 +61,7 @@ set(SOURCE_FILES
         src/raytracer.c
 		src/object.c
 		src/vertextable.c
+		src/gpu.c
 		src/kernel.cl
 		vendor/glad/src/glad.c)
 
