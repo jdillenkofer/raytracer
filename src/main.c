@@ -1,4 +1,5 @@
 #include <float.h>
+#include <time.h>
 
 #include <glad/glad.h>
 #include <SDL2/SDL.h>
@@ -68,6 +69,7 @@ int main(int argc, char* argv[]) {
 
     // wait for quit event before quitting
     bool running = true;
+	bool takeScreenshot = false;
 
 	uint32_t previousTime = SDL_GetTicks();
 	double delta = 0.0;
@@ -111,6 +113,9 @@ int main(int argc, char* argv[]) {
 						break;
 					case SDLK_d:
 						break;
+					case SDLK_PRINTSCREEN:
+						takeScreenshot = true;
+						break;
 					case SDLK_ESCAPE:
 						running = false;
 						break;
@@ -141,11 +146,22 @@ int main(int argc, char* argv[]) {
 		}
 
 		// render
-		gpu_renderScene(context, scene, NULL);
+		if (takeScreenshot) {
+			// render to the backbuffer and copy the clImage to the image struct
+			gpu_renderScene(context, scene, image);
+
+			char filename[255];
+			time_t now = time(NULL);
+			snprintf(filename, sizeof(filename), "%d_raytracer.bmp", (int) now);
+			
+			bitmap_save_image(filename, image);
+			takeScreenshot = false;
+		} else {
+			// just render to the backbuffer
+			gpu_renderScene(context, scene, NULL);
+		}
 		SDL_GL_SwapWindow(window);
     }
-
-	// bitmap_save_image("test.bmp", image);
 
     gpu_destroyContext(context);
 	
