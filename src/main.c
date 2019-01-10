@@ -62,6 +62,7 @@ int main(int argc, char* argv[]) {
 	}
 	
 	Scene* scene = scene_init(RENDER_WIDTH, RENDER_HEIGHT);
+	Image* image = image_create(RENDER_WIDTH, RENDER_HEIGHT);
 
 	GPUContext* context = gpu_initContext(scene, raysPerPixel);
 
@@ -140,11 +141,15 @@ int main(int argc, char* argv[]) {
 		}
 
 		// render
-		gpu_renderScene(context, scene);
+		gpu_renderScene(context, scene, NULL);
 		SDL_GL_SwapWindow(window);
     }
 
     gpu_destroyContext(context);
+
+	// bitmap_save_image("test.bmp", image);
+	
+	image_destroy(image);
 	scene_destroy(scene);
 
 	SDL_GL_DeleteContext(glContext);
