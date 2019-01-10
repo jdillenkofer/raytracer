@@ -51,7 +51,15 @@ bool bitmap_save_image(const char* path, Image* image) {
     fwrite(&bitmapInfoHeader, sizeof(BitmapInfoHeader), 1, file);
     uint32_t bytesPerRow = (uint32_t) (image->width * sizeof(uint32_t));
 	for (uint32_t y = image->height; y-- > 0;) {
-        fwrite(&image->buffer[y * image->width], bytesPerRow, 1, file);
+		for (uint32_t x = 0; x < image->width; x++) {
+			uint32_t color = image->buffer[y * image->width + x];
+			// Note: The bitmap format has the following LE byteorder:
+			// 0xAARRGGBB <- BGRA
+			// OpenGL uses RGBA color channel order:
+			// 0xAABBGGRR <- RGBA
+			color = (color & 0xFF000000) | (color & 0xFF0000) >> 16 | (color & 0x00FF00) | (color & 0xFF) << 16;
+			fwrite(&color, 4, 1, file);
+		}
     }
     fclose(file);
 

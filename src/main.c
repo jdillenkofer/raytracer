@@ -145,9 +145,9 @@ int main(int argc, char* argv[]) {
 		SDL_GL_SwapWindow(window);
     }
 
-    gpu_destroyContext(context);
-
 	// bitmap_save_image("test.bmp", image);
+
+    gpu_destroyContext(context);
 	
 	image_destroy(image);
 	scene_destroy(scene);
