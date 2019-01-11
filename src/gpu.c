@@ -1,5 +1,7 @@
 #include "gpu.h"
 
+#include "utils/stringbuilder.h"
+
 // -------------------- OPENCL STATIC DECLS --------------------
 
 static GPUContext* gpu_initCLContext();
@@ -154,32 +156,6 @@ static GPUContext* gpu_initCLContext() {
 #endif
 	context->cl.ctx = clCreateContext(props, 1, &context->cl.deviceId, NULL, NULL, &context->cl.err);
 	context->cl.commandQueue = clCreateCommandQueue(context->cl.ctx, context->cl.deviceId, 0, &context->cl.err);
-
-	size_t sourceSize = 0;
-	char* source = file_readFile("kernel.cl", &sourceSize);
-
-	context->cl.program = clCreateProgramWithSource(context->cl.ctx, 1, &source, &sourceSize, &context->cl.err);
-	clBuildProgram(context->cl.program, 1, &context->cl.deviceId, NULL, NULL, NULL);
-#ifndef NDEBUG
-	cl_build_status status;
-	clGetProgramBuildInfo(context->cl.program, context->cl.deviceId, CL_PROGRAM_BUILD_STATUS, sizeof(cl_build_status), &status, NULL);
-	if (status != CL_BUILD_SUCCESS) {
-		char* log;
-		size_t log_size = 0;
-
-		// get the size of the log
-		clGetProgramBuildInfo(context->cl.program, context->cl.deviceId, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
-
-		log = malloc(sizeof(char) * (log_size + 1));
-		// get the log itself
-		clGetProgramBuildInfo(context->cl.program, context->cl.deviceId, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
-		log[log_size] = '\0';
-		// print the log
-		printf("Build log:\n%s\n", log);
-		free(log);
-		return NULL;
-	}
-#endif
 	return context;
 }
 
@@ -216,6 +192,141 @@ static bool gpu_allocateCLMemory(GPUContext* context, Scene* scene) {
 }
 
 static bool gpu_setupKernel(GPUContext* context, Scene* scene, uint32_t raysPerPixel) {
+	// check which part of the scene, we can fit into shared memory
+	const char* sharedMemDef = "#define USE_SHARED_MEMORY\n";
+	const char* sharedMemCameraDef = "#define USE_SHARED_MEMORY_CAMERA\n";
+	const char* sharedMemMaterialsDef = "#define USE_SHARED_MEMORY_MATERIALS\n";
+	const char* sharedMemPlanesDef = "#define USE_SHARED_MEMORY_PLANES\n";
+	const char* sharedMemSpheresDef = "#define USE_SHARED_MEMORY_SPHERES\n";
+	const char* sharedMemTrianglesDef = "#define USE_SHARED_MEMORY_TRIANGLES\n";
+	const char* sharedMemPointLightsDef = "#define USE_SHARED_MEMORY_POINTLIGHTS\n";
+
+	bool useSharedMem = false;
+	bool useSharedMemCamera = false;
+	bool useSharedMemMaterials = false;
+	bool useSharedMemPlanes = false;
+	bool useSharedMemSpheres = false;
+	bool useSharedMemTriangles = false;
+	bool useSharedMemPointLights = false;
+
+	size_t sharedMemCameraSize = sizeof(Camera);
+	size_t sharedMemMaterialsSize = sizeof(Material) * scene->materialCount;
+	size_t sharedMemPlanesSize = sizeof(Plane) * scene->planeCount;
+	size_t sharedMemSpheresSize = sizeof(Sphere) * scene->sphereCount;
+	size_t sharedMemTrianglesSize = sizeof(Triangle) * scene->triangleCount;
+	size_t sharedMemPointLightsSize = sizeof(PointLight) * scene->pointLightCount;
+
+	// check if the gpu has a dedicated faster low latency local memory
+	// if not don't use shared memory at all, because the copying process just makes the kernel slower
+	cl_device_local_mem_type type;
+	cl_ulong availableLocalMemSize = 0;
+	clGetDeviceInfo(context->cl.deviceId, CL_DEVICE_LOCAL_MEM_TYPE, sizeof(cl_device_local_mem_type), &type, NULL);
+	if (type == CL_LOCAL) {
+		// get the size of the dedicated local memory storage
+		clGetDeviceInfo(context->cl.deviceId, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(cl_ulong), &availableLocalMemSize, NULL);
+	}
+
+	if (availableLocalMemSize >= sharedMemCameraSize) {
+		useSharedMemCamera = true;
+		availableLocalMemSize -= sharedMemCameraSize;
+	} else {
+		sharedMemCameraSize = 0;
+	}
+
+	if (availableLocalMemSize >= sharedMemMaterialsSize) {
+		useSharedMemMaterials = true;
+		availableLocalMemSize -= sharedMemMaterialsSize;
+	} else {
+		sharedMemMaterialsSize = 0;
+	}
+
+	if (availableLocalMemSize >= sharedMemPlanesSize) {
+		useSharedMemPlanes = true;
+		availableLocalMemSize -= sharedMemPlanesSize;
+	} else {
+		sharedMemPlanesSize = 0;
+	}
+
+	if (availableLocalMemSize >= sharedMemSpheresSize) {
+		useSharedMemSpheres = true;
+		availableLocalMemSize -= sharedMemSpheresSize;
+	} else {
+		sharedMemSpheresSize = 0;
+	}
+
+	if (availableLocalMemSize >= sharedMemTrianglesSize) {
+		useSharedMemTriangles = true;
+		availableLocalMemSize -= sharedMemTrianglesSize;
+	} else {
+		sharedMemTrianglesSize = 0;
+	}
+
+	if (availableLocalMemSize >= sharedMemPointLightsSize) {
+		useSharedMemPointLights = true;
+		availableLocalMemSize -= sharedMemPointLightsSize;
+	} else {
+		sharedMemPointLightsSize = 0;
+	}
+
+	if (useSharedMemCamera || useSharedMemMaterials || useSharedMemPlanes || useSharedMemSpheres || useSharedMemTriangles || useSharedMemPointLights) {
+		useSharedMem = true;
+	}
+
+	size_t sourceSize = 0;
+	const char* source = file_readFile("kernel.cl", &sourceSize);
+
+	StringBuilder* builder = stringbuilder_create(sourceSize + 1000L);
+	if (useSharedMem) {
+		stringbuilder_append(builder, sharedMemDef);
+	}
+	if (useSharedMemCamera) {
+		stringbuilder_append(builder, sharedMemCameraDef);
+	}
+	if (useSharedMemMaterials) {
+		stringbuilder_append(builder, sharedMemMaterialsDef);
+	}
+	if (useSharedMemPlanes) {
+		stringbuilder_append(builder, sharedMemPlanesDef);
+	}
+	if (useSharedMemSpheres) {
+		stringbuilder_append(builder, sharedMemSpheresDef);
+	}
+	if (useSharedMemTriangles) {
+		stringbuilder_append(builder, sharedMemTrianglesDef);
+	}
+	if (useSharedMemPointLights) {
+		stringbuilder_append(builder, sharedMemPointLightsDef);
+	}
+	stringbuilder_append(builder, source);
+	source = stringbuilder_cstr(builder);
+	sourceSize = builder->length;
+	stringbuilder_destroy(builder);
+	
+	context->cl.program = clCreateProgramWithSource(context->cl.ctx, 1, &source, &sourceSize, &context->cl.err);
+
+	free((void*) source);
+	clBuildProgram(context->cl.program, 1, &context->cl.deviceId, NULL, NULL, NULL);
+#ifndef NDEBUG
+	cl_build_status status;
+	clGetProgramBuildInfo(context->cl.program, context->cl.deviceId, CL_PROGRAM_BUILD_STATUS, sizeof(cl_build_status), &status, NULL);
+	if (status != CL_BUILD_SUCCESS) {
+		char* log;
+		size_t log_size = 0;
+
+		// get the size of the log
+		clGetProgramBuildInfo(context->cl.program, context->cl.deviceId, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);
+
+		log = malloc(sizeof(char) * (log_size + 1));
+		// get the log itself
+		clGetProgramBuildInfo(context->cl.program, context->cl.deviceId, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);
+		log[log_size] = '\0';
+		// print the log
+		printf("Build log:\n%s\n", log);
+		free(log);
+		return false;
+	}
+#endif
+
 	cl_kernel raytrace_kernel = context->cl.kernel = clCreateKernel(context->cl.program, "raytrace", &context->cl.err);
 	if (context->cl.err != CL_SUCCESS) {
 		printf("Couldn't create kernel raytrace.\n");
@@ -244,21 +355,21 @@ static bool gpu_setupKernel(GPUContext* context, Scene* scene, uint32_t raysPerP
 	}
 
 	context->cl.err = clSetKernelArg(raytrace_kernel, 0, sizeof(cl_mem), &context->cl.camera);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 1, sizeof(Camera), NULL); // sharedMemory camera
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 1, sharedMemCameraSize, NULL); // sharedMemory camera
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 2, sizeof(cl_mem), &context->cl.materials);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 3, sizeof(Material) * scene->materialCount, NULL); // sharedMemory materials
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 3, sharedMemMaterialsSize, NULL); // sharedMemory materials
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 4, sizeof(uint32_t), &scene->materialCount);
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 5, sizeof(cl_mem), &context->cl.planes);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 6, sizeof(Plane) * scene->planeCount, NULL); // sharedMemory planes
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 6, sharedMemPlanesSize, NULL); // sharedMemory planes
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 7, sizeof(uint32_t), &scene->planeCount);
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 8, sizeof(cl_mem), &context->cl.spheres);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 9, sizeof(Sphere) * scene->sphereCount, NULL); // sharedMemory spheres
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 9, sharedMemSpheresSize, NULL); // sharedMemory spheres
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 10, sizeof(uint32_t), &scene->sphereCount);
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 11, sizeof(cl_mem), &context->cl.triangles);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 12, sizeof(Triangle) * scene->triangleCount, NULL); // sharedMemory triangles
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 12, sharedMemTrianglesSize, NULL); // sharedMemory triangles
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 13, sizeof(uint32_t), &scene->triangleCount);
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 14, sizeof(cl_mem), &context->cl.pointLights);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 15, sizeof(PointLight) * scene->pointLightCount, NULL); // sharedMemory pointLights
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 15, sharedMemPointLightsSize, NULL); // sharedMemory pointLights
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 16, sizeof(uint32_t), &scene->pointLightCount);
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 17, sizeof(cl_mem), &context->cl.image);
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 18, sizeof(float), &rayColorContribution);

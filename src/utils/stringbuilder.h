@@ -2,12 +2,12 @@
 #define RAYTRACER_STRINGBUILDER_H
 
 typedef struct {
-	int capacity;
-	int length;
+	size_t capacity;
+	size_t length;
 	char* buffer;
 } StringBuilder;
 
-StringBuilder* stringbuilder_create(int intialCapacity);
+StringBuilder* stringbuilder_create(size_t intialCapacity);
 
 // appends a string to the end of the internal buffer
 void stringbuilder_append(StringBuilder* builder, const char* str);

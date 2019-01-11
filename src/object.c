@@ -10,22 +10,22 @@
 
 #define DEFAULT_CAPACITY 200
 
-static void object_skipToNextWhitespace(char* data, size_t* offset) {
-    char* dataPtr = &data[*offset];
+static void object_skipToNextWhitespace(const char* data, size_t* offset) {
+	const char* dataPtr = &data[*offset];
     while(*dataPtr != '\0' && (*dataPtr != '\n' && *dataPtr != ' ' && *dataPtr != '\t')) {
         dataPtr = &data[++(*offset)];
     }
 }
 
-static void object_skipWhitespace(char* data, size_t* offset) {
-    char* dataPtr = &data[*offset];
+static void object_skipWhitespace(const char* data, size_t* offset) {
+	const char* dataPtr = &data[*offset];
     while(*dataPtr != '\0' && (*dataPtr == '\n' || *dataPtr == ' ' || *dataPtr == '\t')) {
         dataPtr = &data[++(*offset)];
     }
 }
 
-static bool object_skipToNextLine(char* data, size_t* offset) {
-    char* dataPtr = &data[*offset];
+static bool object_skipToNextLine(const char* data, size_t* offset) {
+	const char* dataPtr = &data[*offset];
     while(*dataPtr != '\0' && *dataPtr != '\n') {
         dataPtr = &data[++(*offset)];
     }
@@ -36,15 +36,15 @@ static bool object_skipToNextLine(char* data, size_t* offset) {
     return !isEndOfStr;
 }
 
-static bool object_atEndOfLineOrAtEndOfFile(char* data, size_t* offset) {
+static bool object_atEndOfLineOrAtEndOfFile(const char* data, size_t* offset) {
     return data[*offset] == '\n' || data[*offset] == '\0';
 }
 
 #define LOCAL_NUM_BUFFERSIZE 255
-static float object_getFloat(char *data, size_t *offset) {
+static float object_getFloat(const char *data, size_t *offset) {
     static char buff[LOCAL_NUM_BUFFERSIZE];
     size_t startOffset = *offset;
-    char* dataPtr = &data[*offset];
+	const char* dataPtr = &data[*offset];
     while(*dataPtr != '\0' &&
         ((*dataPtr >= 48 && *dataPtr <= 57) ||
         *dataPtr == '.' || *dataPtr == '-' || *dataPtr == 'e')) {
@@ -59,10 +59,10 @@ static float object_getFloat(char *data, size_t *offset) {
     return (float) atof(buff);
 }
 
-static uint32_t object_getInt(char *data, size_t *offset) {
+static uint32_t object_getInt(const char *data, size_t *offset) {
     static char buff[LOCAL_NUM_BUFFERSIZE];
     size_t startOffset = *offset;
-    char* dataPtr = &data[*offset];
+	const char* dataPtr = &data[*offset];
     while(*dataPtr != '\0' && (*dataPtr >= 48 && *dataPtr <= 57)) {
         dataPtr = &data[++(*offset)];
     }
@@ -75,7 +75,7 @@ static uint32_t object_getInt(char *data, size_t *offset) {
     return (uint32_t) atoi(buff);
 }
 
-static void object_parseVertex(VertexTable* vertexTable, char* data, size_t* offset) {
+static void object_parseVertex(VertexTable* vertexTable, const char* data, size_t* offset) {
     Vec3 vertex;
     // skip v
     (*offset)++;
@@ -104,7 +104,7 @@ static void object_addTriangle(Object* object, Triangle triangle) {
     object->triangles[object->triangleCount++] = triangle;
 }
 
-static void object_parseFace(Object* object, VertexTable* vertexTable, char* data, size_t* offset) {
+static void object_parseFace(Object* object, VertexTable* vertexTable, const char* data, size_t* offset) {
     // skip f
     (*offset)++;
     object_skipWhitespace(data, offset);
@@ -137,7 +137,7 @@ Object* object_loadFromFile(const char* filepath) {
     VertexTable* vertexTable = vertextable_create();
 
     size_t fileSize;
-    char* data = file_readFile(filepath, &fileSize);
+    const char* data = file_readFile(filepath, &fileSize);
     size_t offset = 0;
     do {
         object_skipWhitespace(data, &offset);
@@ -164,7 +164,7 @@ Object* object_loadFromFile(const char* filepath) {
         }
     } while (object_skipToNextLine(data, &offset));
 
-    free(data);
+    free((void*) data);
     vertextable_destroy(vertexTable);
     return object;
 }

@@ -2,10 +2,10 @@
 
 #include <stdlib.h>
 
-void* file_readFile(const char* filepath, size_t* fileSize)
+const char* file_readFile(const char* filepath, size_t* fileSize)
 {
     FILE* file;
-    void* data;
+    char* data;
     size_t size;
     int err;
 
@@ -17,8 +17,9 @@ void* file_readFile(const char* filepath, size_t* fileSize)
     fseek(file, 0L, SEEK_END);
     size = ftell(file);
     rewind(file);
-    data = malloc(size);
+    data = malloc(size + 1);
     fread(data, size, 1, file);
+	data[size] = '\0';
     err = ferror(file);
     if (err != 0) {
         free(data);
@@ -26,6 +27,6 @@ void* file_readFile(const char* filepath, size_t* fileSize)
         return NULL;
     }
     fclose(file);
-    *fileSize = size;
+    *fileSize = size + 1;
     return data;
 }

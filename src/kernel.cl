@@ -1,11 +1,3 @@
-#define USE_SHARED_MEMORY
-#define USE_SHARED_MEMORY_CAMERA
-#define USE_SHARED_MEMORY_MATERIALS
-#define USE_SHARED_MEMORY_PLANES
-#define USE_SHARED_MEMORY_SPHERES
-#define USE_SHARED_MEMORY_TRIANGLES
-#define USE_SHARED_MEMORY_POINTLIGHTS
-
 #ifdef USE_SHARED_MEMORY_CAMERA
 	#define CAMERA_QUALIFIER __local
 #else
@@ -543,99 +535,98 @@ Vec3 raytracer_raycast(CAMERA_QUALIFIER Camera* camera, MATERIALS_QUALIFIER Mate
 }
 
 
-__kernel void raytrace(__global Camera* camera, __local Camera* sharedCamera, __global Material* materials, __local Material* sharedMaterials, uint32_t materialCount, 
-                       __global Plane* planes, __local Plane* sharedPlanes, uint32_t planeCount, __global Sphere* spheres, __local Sphere* sharedSpheres, uint32_t sphereCount, 
-                       __global Triangle* triangles, __local Triangle* sharedTriangles, uint32_t triangleCount, 
-					   __global PointLight* pointLights, __local PointLight* sharedPointLights, uint32_t pointLightCount, 
-					   __write_only image2d_t image, float rayColorContribution, float deltaX, float deltaY,
-                       float pixelWidth, float pixelHeight, uint32_t raysPerWidthPixel, uint32_t raysPerHeightPixel) {
+__kernel void raytrace(__global Camera* camera, __local Camera* sharedCamera, __global Material* materials, __local Material* sharedMaterials, uint32_t materialCount,
+	__global Plane* planes, __local Plane* sharedPlanes, uint32_t planeCount, __global Sphere* spheres, __local Sphere* sharedSpheres, uint32_t sphereCount,
+	__global Triangle* triangles, __local Triangle* sharedTriangles, uint32_t triangleCount,
+	__global PointLight* pointLights, __local PointLight* sharedPointLights, uint32_t pointLightCount,
+	__write_only image2d_t image, float rayColorContribution, float deltaX, float deltaY,
+	float pixelWidth, float pixelHeight, uint32_t raysPerWidthPixel, uint32_t raysPerHeightPixel) {
 
 	// copy global data into local shared memory
 #ifdef USE_SHARED_MEMORY
 	if (get_local_id(0)) {
 #ifdef USE_SHARED_MEMORY_CAMERA
 		*sharedCamera = *camera;
-		#define camera sharedCamera
+#define camera sharedCamera
 #endif
-		
+
 #ifdef USE_SHARED_MEMORY_MATERIALS
 		for (uint32_t i = 0; i < materialCount; i++) {
 			sharedMaterials[i] = materials[i];
 		}
-		#define materials sharedMaterials
+#define materials sharedMaterials
 #endif
 
 #ifdef USE_SHARED_MEMORY_PLANES
 		for (uint32_t i = 0; i < planeCount; i++) {
 			sharedPlanes[i] = planes[i];
 		}
-		#define planes sharedPlanes
+#define planes sharedPlanes
 #endif
 
 #ifdef USE_SHARED_MEMORY_SPHERES
 		for (uint32_t i = 0; i < sphereCount; i++) {
 			sharedSpheres[i] = spheres[i];
 		}
-		#define spheres sharedSpheres
+#define spheres sharedSpheres
 #endif
 
 #ifdef USE_SHARED_MEMORY_TRIANGLES
 		for (uint32_t i = 0; i < triangleCount; i++) {
 			sharedTriangles[i] = triangles[i];
 		}
-		#define triangles sharedTriangles
+#define triangles sharedTriangles
 #endif
 
 #ifdef USE_SHARED_MEMORY_POINTLIGHTS
 		for (uint32_t i = 0; i < pointLightCount; i++) {
 			sharedPointLights[i] = pointLights[i];
 		}
-		#define pointLights sharedPointLights
+#define pointLights sharedPointLights
 #endif
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
 #endif
 
-    uint32_t x = get_global_id(0);
-    uint32_t width = camera->width;
-    uint32_t y = get_global_id(1);
-    float PosX = -1.0f + 2.0f * ((float)x / (camera->width));
-    float PosY = -1.0f + 2.0f * ((float)y / (camera->height));
-    Vec3 color;
-    color.r = 0.0f;
-    color.g = 0.0f;
-    color.b = 0.0f;
-    // Supersampling loops
-    for (uint32_t j = 0; j < raysPerHeightPixel; j++) {
-	    Vec3 OffsetY = vec3_mul(camera->y,
+	uint32_t x = get_global_id(0);
+	uint32_t width = camera->width;
+	uint32_t y = get_global_id(1);
+	float PosX = -1.0f + 2.0f * ((float)x / (camera->width));
+	float PosY = -1.0f + 2.0f * ((float)y / (camera->height));
+	Vec3 color;
+	color.r = 0.0f;
+	color.g = 0.0f;
+	color.b = 0.0f;
+	// Supersampling loops
+	for (uint32_t j = 0; j < raysPerHeightPixel; j++) {
+		Vec3 OffsetY = vec3_mul(camera->y,
 			(PosY - pixelHeight + j * deltaY)*camera->renderTargetHeight / 2.0f);
-        for (uint32_t i = 0; i < raysPerWidthPixel; i++) {
-		    Vec3 OffsetX = vec3_mul(camera->x, 
+		for (uint32_t i = 0; i < raysPerWidthPixel; i++) {
+			Vec3 OffsetX = vec3_mul(camera->x,
 				(PosX - pixelWidth + i * deltaX)*camera->renderTargetWidth / 2.0f);
-            // (0, 0) is the top left
-		    // so we have to sample the texture with flipped y
-		    Vec3 renderTargetPos = vec3_sub(vec3_add(camera->renderTargetCenter, OffsetX), OffsetY);
-            Ray ray = {
-                camera->position,
-                vec3_norm(vec3_sub(renderTargetPos, camera->position))
-            };
+			// (0, 0) is the top left
+			// so we have to sample the texture with flipped y
+			Vec3 renderTargetPos = vec3_sub(vec3_add(camera->renderTargetCenter, OffsetX), OffsetY);
+			Ray ray = {
+				camera->position,
+				vec3_norm(vec3_sub(renderTargetPos, camera->position))
+			};
 
-            Vec3 currentRayColor = raytracer_raycast(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &ray);
-            color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
-        }
-    }
+			Vec3 currentRayColor = raytracer_raycast(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &ray);
+			color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
+		}
+	}
 
-    // currently values are clamped to [0,1]
-    // in the future we may return floats > 1.0
-    // and use hdr to map it back to the [0.0, 1.0] range after
-    // all pixels are calculated
-    // this would avoid that really bright areas look the 
-    // same 
-    color = vec3_clamp(color, 0.0f, 1.0f);
-    int2 pixelcoord;
-    pixelcoord.x = x;
-    pixelcoord.y = y;
-   
-    float4 pixel = (float4) (color.r, color.g, color.b, 1.0f);
-    write_imagef(image, pixelcoord, pixel);
-};
+	// currently values are clamped to [0,1]
+	// in the future we may return floats > 1.0
+	// and use hdr to map it back to the [0.0, 1.0] range after
+	// all pixels are calculated
+	// this would avoid that really bright areas look the same
+	color = vec3_clamp(color, 0.0f, 1.0f);
+	int2 pixelcoord;
+	pixelcoord.x = x;
+	pixelcoord.y = y;
+
+	float4 pixel = (float4) (color.r, color.g, color.b, 1.0f);
+	write_imagef(image, pixelcoord, pixel);
+}

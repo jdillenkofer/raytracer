@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-StringBuilder* stringbuilder_create(int intialCapacity) {
+StringBuilder* stringbuilder_create(size_t intialCapacity) {
 	if (intialCapacity < 1) {
 		intialCapacity = 1;
 	}
