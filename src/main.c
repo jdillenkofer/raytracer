@@ -8,6 +8,7 @@
 #include "utils/vec3.h"
 #include "camera.h"
 #include "scene.h"
+#include "octree.h"
 #include "raytracer.h"
 #include "gpu.h"
 
@@ -63,6 +64,7 @@ int main(int argc, char* argv[]) {
 	}
 	
 	Scene* scene = scene_init(RENDER_WIDTH, RENDER_HEIGHT);
+	Octree* octree = octree_buildFromScene(scene);
 	Image* image = image_create(RENDER_WIDTH, RENDER_HEIGHT);
 
 	GPUContext* context = gpu_initContext(scene, raysPerPixel);
@@ -166,6 +168,7 @@ int main(int argc, char* argv[]) {
     gpu_destroyContext(context);
 	
 	image_destroy(image);
+	octree_delete(octree);
 	scene_destroy(scene);
 
 	SDL_GL_DeleteContext(glContext);

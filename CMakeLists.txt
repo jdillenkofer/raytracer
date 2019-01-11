@@ -56,6 +56,7 @@ set(SOURCE_FILES
 		src/utils/image.c
 		src/utils/file.c
 		src/utils/stringbuilder.c
+		src/octree.c
 		src/camera.c
         src/triangle.c
         src/scene.c
@@ -72,6 +73,7 @@ set(HEADER_FILES
 		src/utils/random.h
 		src/utils/file.h
 		src/utils/stringbuilder.h
+		src/octree.h
         src/camera.h
         src/triangle.h
         src/utils/image.h
