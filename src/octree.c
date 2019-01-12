@@ -207,11 +207,14 @@ static uint32_t octree_buildNode(Octree* octree, Scene* scene,
 	int32_t parentNodeId = octree->nodeCount - 1;
 	int32_t currentNodeId = octree->nodeCount++;
 
-	// we can't save a pointer to the currentNode,
-	// because the underlying array may change it's address due to a realloc call
+	// if one of these asserts fire,
+	// we can't subdivide the boundingBox anymore, because the floating point precision may be too small
 	assert(boundingBox.bottomLeftFrontCorner.x < boundingBox.topRightBackCorner.x);
 	assert(boundingBox.bottomLeftFrontCorner.y < boundingBox.topRightBackCorner.y);
 	assert(boundingBox.bottomLeftFrontCorner.z < boundingBox.topRightBackCorner.z);
+
+	// we can't save a pointer to the currentNode,
+	// because the underlying array may change it's address due to a realloc call
 	octree->nodes[currentNodeId].boundingBox = boundingBox;
 
 	uint32_t sphereElementsInside = 0;
@@ -263,6 +266,7 @@ static uint32_t octree_buildNode(Octree* octree, Scene* scene,
 		Vec3 halfDiagonal = vec3_mul(diagonal, 0.5f);
 		Vec3 centerOfBoundingBox = vec3_add(boundingBox.bottomLeftFrontCorner, halfDiagonal);
 
+
 		// front bottom left
 		BoundingBox bbFrontBottomLeft = (BoundingBox) { boundingBox.bottomLeftFrontCorner, centerOfBoundingBox };
 		octree->nodes[currentNodeId].childNodeIndexes[0] = octree_buildNode(octree, scene, sphereIndexesInside, sphereElementsInside, triangleIndexesInside, triangleElementsInside, bbFrontBottomLeft);
@@ -278,15 +282,15 @@ static uint32_t octree_buildNode(Octree* octree, Scene* scene,
 		// back bottom left
 		BoundingBox bbBackBottomLeft =
 			(BoundingBox) {
-				vec3_add(boundingBox.bottomLeftFrontCorner, (Vec3) { 0.0f, halfDiagonal.y, 0.0f }),
-				vec3_add(centerOfBoundingBox, (Vec3) { 0.0f, halfDiagonal.y, 0.0f })
+				vec3_add(boundingBox.bottomLeftFrontCorner, (Vec3) { 0.0f, 0.0f, halfDiagonal.z }),
+				vec3_add(centerOfBoundingBox, (Vec3) { 0.0f, 0.0f, halfDiagonal.z })
 			};
 		octree->nodes[currentNodeId].childNodeIndexes[2] = octree_buildNode(octree, scene, sphereIndexesInside, sphereElementsInside, triangleIndexesInside, triangleElementsInside, bbBackBottomLeft);
 
 		// back bottom right
 		BoundingBox bbBackBottomRight =
 			(BoundingBox) {
-				vec3_add(centerOfBoundingBox, (Vec3) { 0.0f, -halfDiagonal.y, 0.0f }),
+				vec3_add(boundingBox.bottomLeftFrontCorner, (Vec3) { halfDiagonal.x, 0.0f, halfDiagonal.z }),
 				vec3_add(centerOfBoundingBox, (Vec3) { halfDiagonal.x, 0.0f, halfDiagonal.z })
 			};
 		octree->nodes[currentNodeId].childNodeIndexes[3] = octree_buildNode(octree, scene, sphereIndexesInside, sphereElementsInside, triangleIndexesInside, triangleElementsInside, bbBackBottomRight);
@@ -294,7 +298,7 @@ static uint32_t octree_buildNode(Octree* octree, Scene* scene,
 		// front top left
 		BoundingBox bbFrontTopLeft =
 			(BoundingBox) {
-				vec3_add(centerOfBoundingBox, (Vec3) { -halfDiagonal.x, 0.0f, -halfDiagonal.z }),
+				vec3_add(boundingBox.bottomLeftFrontCorner, (Vec3) { 0.0f, halfDiagonal.y, 0.0f }),
 				vec3_add(centerOfBoundingBox, (Vec3) { 0.0f, halfDiagonal.y, 0.0f })
 			};
 		octree->nodes[currentNodeId].childNodeIndexes[4] = octree_buildNode(octree, scene, sphereIndexesInside, sphereElementsInside, triangleIndexesInside, triangleElementsInside, bbFrontTopLeft);
@@ -302,21 +306,22 @@ static uint32_t octree_buildNode(Octree* octree, Scene* scene,
 		// front top right
 		BoundingBox bbFrontTopRight =
 			(BoundingBox) {
-				vec3_add(centerOfBoundingBox, (Vec3) { 0.0f, 0.0f, -halfDiagonal.z }),
+				vec3_add(boundingBox.bottomLeftFrontCorner, (Vec3) { halfDiagonal.x, halfDiagonal.y, 0.0f }),
 				vec3_add(centerOfBoundingBox, (Vec3) { halfDiagonal.x, halfDiagonal.y, 0.0f })
 			};
 		octree->nodes[currentNodeId].childNodeIndexes[5] = octree_buildNode(octree, scene, sphereIndexesInside, sphereElementsInside, triangleIndexesInside, triangleElementsInside, bbFrontTopRight);
 
+		// front - back +
 		// back top left
 		BoundingBox bbBackTopLeft =
 			(BoundingBox) {
-				vec3_add(centerOfBoundingBox, (Vec3) { -halfDiagonal.x, 0.0f, 0.0f }),
+				vec3_add(boundingBox.bottomLeftFrontCorner, (Vec3) { 0.0f, 0.0f, halfDiagonal.z }),
 				vec3_add(centerOfBoundingBox, (Vec3) { 0.0f, halfDiagonal.y, halfDiagonal.z })
 			};
 		octree->nodes[currentNodeId].childNodeIndexes[6] = octree_buildNode(octree, scene, sphereIndexesInside, sphereElementsInside, triangleIndexesInside, triangleElementsInside, bbBackTopLeft);
 
 		// back top right
-		BoundingBox bbBackTopRight = (BoundingBox) { centerOfBoundingBox, vec3_add(centerOfBoundingBox, halfDiagonal) };
+		BoundingBox bbBackTopRight = (BoundingBox) { centerOfBoundingBox, boundingBox.topRightBackCorner };
 		octree->nodes[currentNodeId].childNodeIndexes[7] = octree_buildNode(octree, scene, sphereIndexesInside, sphereElementsInside, triangleIndexesInside, triangleElementsInside, bbBackTopRight);
 
 		octree->nodes[currentNodeId].sphereIndexCount = 0;
@@ -379,6 +384,11 @@ Octree* octree_buildFromScene(Scene* scene) {
 	free(triangleIndexes);
 	
 	octree_shrinkToFit(octree);
+	uint32_t triangles = 0;
+	for (uint32_t i = 0; i < octree->nodeCount; i++) {
+		OctreeNode* octreeNode = &octree->nodes[i];
+		triangles += octreeNode->triangleIndexCount;
+	}
 	return octree;
 }
 

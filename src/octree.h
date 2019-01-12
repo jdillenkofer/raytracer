@@ -4,7 +4,7 @@
 #include "scene.h"
 #include "utils/vec3.h"
 
-#define MAX_ELEMENTS_PER_NODE 32
+#define MAX_ELEMENTS_PER_NODE 34
 #define NODE_INDEX_UNDEF -1
 
 typedef struct {
