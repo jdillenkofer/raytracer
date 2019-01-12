@@ -6,8 +6,8 @@
 
 static GPUContext* gpu_initCLContext();
 // this needs to be done after gl texture creation
-static bool gpu_allocateCLMemory(GPUContext* context, Scene* scene);
-static bool gpu_setupKernel(GPUContext* context, Scene* scene, uint32_t raysPerPixel);
+static bool gpu_allocateCLMemory(GPUContext* context, Scene* scene, Octree* octree);
+static bool gpu_setupKernel(GPUContext* context, Scene* scene, Octree* octree, uint32_t raysPerPixel);
 static void gpu_deleteCLMemory(GPUContext* context);
 
 // -------------------- OPENGL STATIC DECLS --------------------
@@ -18,14 +18,14 @@ static void gpu_deleteGLObjects(GPUContext* context);
 
 // -------------------- MIXED --------------------
 
-GPUContext* gpu_initContext(Scene* scene, uint32_t raysPerPixel) {
+GPUContext* gpu_initContext(Scene* scene, Octree* octree, uint32_t raysPerPixel) {
 	GPUContext* context = gpu_initCLContext();
 	if (!context) {
 		return NULL;
 	}
 	gpu_initGLContext(context, scene->camera->width, scene->camera->height);
-	gpu_allocateCLMemory(context, scene);
-	gpu_setupKernel(context, scene, raysPerPixel);
+	gpu_allocateCLMemory(context, scene, octree);
+	gpu_setupKernel(context, scene, octree, raysPerPixel);
 	return context;
 }
 
@@ -131,6 +131,15 @@ static cl_mem gpu_createPointLightsBuffer(GPUContext* context, Scene* scene) {
 	return dev_pointLights;
 }
 
+static cl_mem gpu_createOctreeNodesBuffer(GPUContext* context, Octree* octree) {
+	cl_mem dev_octreeNodes = (void*)clCreateBuffer(context->cl.ctx, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(OctreeNode) * octree->nodeCount, octree->nodes, &context->cl.err);
+	if (context->cl.err != CL_SUCCESS) {
+		printf("Couldn't create dev_octreeNodes.\n");
+		return NULL;
+	}
+	return dev_octreeNodes;
+}
+
 static GPUContext* gpu_initCLContext() {
 	GPUContext* context = malloc(sizeof(GPUContext));
 	clGetPlatformIDs(1, &context->cl.platformId, NULL);
@@ -159,7 +168,7 @@ static GPUContext* gpu_initCLContext() {
 	return context;
 }
 
-static bool gpu_allocateCLMemory(GPUContext* context, Scene* scene) {
+static bool gpu_allocateCLMemory(GPUContext* context, Scene* scene, Octree* octree) {
 	context->cl.image = gpu_createImageBufferFromTextureId(context, context->gl.texture);
 	if (!context->cl.image) {
 		return false;
@@ -188,10 +197,14 @@ static bool gpu_allocateCLMemory(GPUContext* context, Scene* scene) {
 	if (!context->cl.pointLights) {
 		return false;
 	}
+	context->cl.octreeNodes = gpu_createOctreeNodesBuffer(context, octree);
+	if (!context->cl.octreeNodes) {
+		return false;
+	}
 	return true;
 }
 
-static bool gpu_setupKernel(GPUContext* context, Scene* scene, uint32_t raysPerPixel) {
+static bool gpu_setupKernel(GPUContext* context, Scene* scene, Octree* octree, uint32_t raysPerPixel) {
 	// check which part of the scene, we can fit into shared memory
 	const char* sharedMemDef = "#define USE_SHARED_MEMORY\n";
 	const char* sharedMemCameraDef = "#define USE_SHARED_MEMORY_CAMERA\n";
@@ -200,6 +213,7 @@ static bool gpu_setupKernel(GPUContext* context, Scene* scene, uint32_t raysPerP
 	const char* sharedMemSpheresDef = "#define USE_SHARED_MEMORY_SPHERES\n";
 	const char* sharedMemTrianglesDef = "#define USE_SHARED_MEMORY_TRIANGLES\n";
 	const char* sharedMemPointLightsDef = "#define USE_SHARED_MEMORY_POINTLIGHTS\n";
+	const char* sharedMemOctreeNodesDef = "#define USE_SHARED_MEMORY_OCTREENODES\n";
 
 	bool useSharedMem = false;
 	bool useSharedMemCamera = false;
@@ -208,6 +222,7 @@ static bool gpu_setupKernel(GPUContext* context, Scene* scene, uint32_t raysPerP
 	bool useSharedMemSpheres = false;
 	bool useSharedMemTriangles = false;
 	bool useSharedMemPointLights = false;
+	bool useSharedMemOctreeNodes = false;
 
 	size_t sharedMemCameraSize = sizeof(Camera);
 	size_t sharedMemMaterialsSize = sizeof(Material) * scene->materialCount;
@@ -215,6 +230,7 @@ static bool gpu_setupKernel(GPUContext* context, Scene* scene, uint32_t raysPerP
 	size_t sharedMemSpheresSize = sizeof(Sphere) * scene->sphereCount;
 	size_t sharedMemTrianglesSize = sizeof(Triangle) * scene->triangleCount;
 	size_t sharedMemPointLightsSize = sizeof(PointLight) * scene->pointLightCount;
+	size_t sharedMemOctreeNodesSize = sizeof(OctreeNode) * octree->nodeCount;
 
 	// check if the gpu has a dedicated faster low latency local memory
 	// if not don't use shared memory at all, because the copying process just makes the kernel slower
@@ -268,7 +284,14 @@ static bool gpu_setupKernel(GPUContext* context, Scene* scene, uint32_t raysPerP
 		sharedMemPointLightsSize = 0;
 	}
 
-	if (useSharedMemCamera || useSharedMemMaterials || useSharedMemPlanes || useSharedMemSpheres || useSharedMemTriangles || useSharedMemPointLights) {
+	if (availableLocalMemSize >= sharedMemOctreeNodesSize) {
+		useSharedMemOctreeNodes = true;
+		availableLocalMemSize -= sharedMemOctreeNodesSize;
+	} else {
+		sharedMemOctreeNodesSize = 0;
+	}
+
+	if (useSharedMemCamera || useSharedMemMaterials || useSharedMemPlanes || useSharedMemSpheres || useSharedMemTriangles || useSharedMemPointLights || useSharedMemOctreeNodes) {
 		useSharedMem = true;
 	}
 
@@ -296,6 +319,9 @@ static bool gpu_setupKernel(GPUContext* context, Scene* scene, uint32_t raysPerP
 	}
 	if (useSharedMemPointLights) {
 		stringbuilder_append(builder, sharedMemPointLightsDef);
+	}
+	if (useSharedMemOctreeNodes) {
+		stringbuilder_append(builder, sharedMemOctreeNodesDef);
 	}
 	stringbuilder_append(builder, source);
 	source = stringbuilder_cstr(builder);
@@ -371,14 +397,17 @@ static bool gpu_setupKernel(GPUContext* context, Scene* scene, uint32_t raysPerP
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 14, sizeof(cl_mem), &context->cl.pointLights);
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 15, sharedMemPointLightsSize, NULL); // sharedMemory pointLights
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 16, sizeof(uint32_t), &scene->pointLightCount);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 17, sizeof(cl_mem), &context->cl.image);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 18, sizeof(float), &rayColorContribution);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 19, sizeof(float), &deltaX);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 20, sizeof(float), &deltaY);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 21, sizeof(float), &pixelWidth);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 22, sizeof(float), &pixelHeight);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 23, sizeof(uint32_t), &raysPerWidthPixel);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 24, sizeof(uint32_t), &raysPerHeightPixel);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 17, sizeof(cl_mem), &context->cl.octreeNodes);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 18, sharedMemOctreeNodesSize, NULL); // sharedMemory octreeNodes
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 19, sizeof(uint32_t), &octree->nodeCount);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 20, sizeof(cl_mem), &context->cl.image);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 21, sizeof(float), &rayColorContribution);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 22, sizeof(float), &deltaX);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 23, sizeof(float), &deltaY);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 24, sizeof(float), &pixelWidth);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 25, sizeof(float), &pixelHeight);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 26, sizeof(uint32_t), &raysPerWidthPixel);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 27, sizeof(uint32_t), &raysPerHeightPixel);
 	if (context->cl.err != CL_SUCCESS) {
 		printf("Couldn't set all kernel args correctly.\n");
 		return false;
@@ -394,6 +423,7 @@ static void gpu_deleteCLMemory(GPUContext* context) {
 	clReleaseMemObject(context->cl.spheres);
 	clReleaseMemObject(context->cl.triangles);
 	clReleaseMemObject(context->cl.pointLights);
+	clReleaseMemObject(context->cl.octreeNodes);
 }
 
 // -------------------- OPENGL--------------------

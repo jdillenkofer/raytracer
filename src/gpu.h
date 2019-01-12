@@ -22,6 +22,7 @@
 #include "utils/file.h"
 #include "utils/image.h"
 #include "scene.h"
+#include "octree.h"
 
 typedef struct {
 	struct {
@@ -38,6 +39,7 @@ typedef struct {
 		cl_mem spheres;
 		cl_mem triangles;
 		cl_mem pointLights;
+		cl_mem octreeNodes;
 		cl_int err;
 	} cl;
 	struct {
@@ -53,7 +55,7 @@ typedef struct {
 
 // -------------------- MIXED --------------------
 
-GPUContext* gpu_initContext(Scene* scene, uint32_t raysPerPixel);
+GPUContext* gpu_initContext(Scene* scene, Octree* octree, uint32_t raysPerPixel);
 void gpu_renderScene(GPUContext* context, Scene* scene, Image* image);
 void gpu_destroyContext(GPUContext* context);
 

@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
 	Octree* octree = octree_buildFromScene(scene);
 	Image* image = image_create(RENDER_WIDTH, RENDER_HEIGHT);
 
-	GPUContext* context = gpu_initContext(scene, raysPerPixel);
+	GPUContext* context = gpu_initContext(scene, octree, raysPerPixel);
 
     // wait for quit event before quitting
     bool running = true;

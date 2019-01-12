@@ -34,7 +34,14 @@
 #define POINTLIGHTS_QUALIFIER __global
 #endif
 
+#ifdef USE_SHARED_MEMORY_OCTREENODES
+#define OCTREENODES_QUALIFIER __local
+#else
+#define OCTREENODES_QUALIFIER __global
+#endif
+
 #define uint32_t uint
+#define int32_t int
 #define PI 3.14159265358979323846f
 
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
@@ -212,6 +219,27 @@ typedef struct {
     Vec3 origin;
     Vec3 direction;
 } Ray;
+
+#define MAX_ELEMENTS_PER_NODE 32
+#define NODE_INDEX_UNDEF -1
+
+typedef struct {
+	Vec3 bottomLeftFrontCorner;
+	Vec3 topRightBackCorner;
+} BoundingBox;
+
+typedef struct {
+	BoundingBox boundingBox;
+
+	uint32_t sphereIndexes[MAX_ELEMENTS_PER_NODE];
+	uint32_t sphereIndexCount;
+
+	uint32_t triangleIndexes[MAX_ELEMENTS_PER_NODE];
+	uint32_t triangleIndexCount;
+
+	int32_t childNodeIndexes[8];
+} OctreeNode;
+
 #define EPSILON 0.00001f
 static Vec3 raytracer_refract(Vec3 direction, Vec3 normal, float refractionIndex) {
     float cosi = math_clamp(-1, 1, vec3_dot(direction, normal));
@@ -370,6 +398,52 @@ static bool raytracer_intersectTriangle(TRIANGLES_QUALIFIER Triangle* triangle, 
     return false;
 }
 
+static bool raytracer_intersectBoundingBox(Ray* ray, BoundingBox boundingBox) {
+	float txmin = (boundingBox.bottomLeftFrontCorner.x - ray->origin.x) / ray->direction.x;
+	float txmax = (boundingBox.topRightBackCorner.x - ray->origin.x) / ray->direction.x;
+
+	if (txmin > txmax) {
+		float tmp = txmin;
+		txmin = txmax;
+		txmax = tmp;
+	}
+
+	float tymin = (boundingBox.bottomLeftFrontCorner.y - ray->origin.y) / ray->direction.y;
+	float tymax = (boundingBox.topRightBackCorner.y - ray->origin.y) / ray->direction.y;
+
+	if (tymin > tymax) {
+		float tmp = tymin;
+		tymin = tymax;
+		tymax = tmp;
+	}
+
+	if ((txmin > tymax) || (tymin > txmax)) {
+		return false;
+	}
+
+	if (tymin > txmin) {
+		txmin = tymin;
+	}
+
+	if (tymax < txmax) {
+		txmax = tymax;
+	}
+
+	float tzmin = (boundingBox.bottomLeftFrontCorner.z - ray->origin.z) / ray->direction.z;
+	float tzmax = (boundingBox.topRightBackCorner.z - ray->origin.z) / ray->direction.z;
+
+	if (tzmin > tzmax) {
+		float tmp = tzmin;
+		tzmin = tzmax;
+		tzmax = tmp;
+	}
+
+	if ((txmin > tzmax) || (tzmin > txmax)) {
+		return false;
+	}
+	return true;
+}
+
 static void raytracer_calcClosestPlaneIntersect(PLANES_QUALIFIER Plane* planes, uint32_t planeCount, Ray* ray, float* minHitDistance, Vec3* intersectionNormal,
                                                 uint32_t* hitMaterialIndex) {
     for (uint32_t i = 0; i < planeCount; i++) {
@@ -386,42 +460,91 @@ static void raytracer_calcClosestPlaneIntersect(PLANES_QUALIFIER Plane* planes, 
     }
 }
 
-static void raytracer_calcClosestSphereIntersect(SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, Ray *ray, float* minHitDistance, Vec3* intersectionNormal,
-                                                 uint32_t* hitMaterialIndex) {
-    for (uint32_t i = 0; i < sphereCount; i++) {
-		SPHERES_QUALIFIER Sphere* sphere = &spheres[i];
-        float sphereHitDistance = FLT_MAX;
-        Vec3 sphereIntersectionNormal;
-        if (raytracer_intersectSphere(sphere, ray, &sphereHitDistance, &sphereIntersectionNormal)) {
-            if (sphereHitDistance < *minHitDistance) {
-                *intersectionNormal = sphereIntersectionNormal;
-                *minHitDistance = sphereHitDistance;
-                *hitMaterialIndex = sphere->materialIndex;
-            }
-        }
-    }
-}
+static void raytracer_calcClosestIntersectUsingOctree(SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, 
+                                                 Ray* ray, float* minHitDistance, Vec3* intersectionNormal,
+                                                 uint32_t* hitMaterialIndex, OCTREENODES_QUALIFIER OctreeNode* octreeNodes) {
+	uint32_t nodesToCheck[1000];
+	uint32_t nodesToCheckCount = 0;
 
-static void raytracer_calcClosestTriangleIntersect(TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, Ray* ray, float* minHitDistance, Vec3* intersectionNormal,
-                                                   uint32_t* hitMaterialIndex) {
-    for (uint32_t i = 0; i < triangleCount; i++) {
-		TRIANGLES_QUALIFIER Triangle* triangle = &triangles[i];
-        float triangleHitDistance = FLT_MAX;
-        Vec3 triangleIntersectionNormal;
-        if (raytracer_intersectTriangle(triangle, ray, &triangleHitDistance, &triangleIntersectionNormal)) {
-            if (triangleHitDistance < *minHitDistance) {
-                *intersectionNormal = triangleIntersectionNormal;
-                *minHitDistance = triangleHitDistance;
-                *hitMaterialIndex = triangle->materialIndex;
-            }
-        }
-    }
+	uint32_t sphereIndexArray[1000];
+	uint32_t sphereIndexArrayCount = 0;
+
+	uint32_t triangleIndexArray[1000];
+	uint32_t triangleIndexArrayCount = 0;
+
+	// push root to the stack
+	nodesToCheck[nodesToCheckCount++] = 0;
+
+	while (nodesToCheckCount > 0) {
+		uint32_t currentNodeIndex = nodesToCheck[--nodesToCheckCount];
+		OCTREENODES_QUALIFIER OctreeNode* currentNode = &octreeNodes[currentNodeIndex];
+		if (raytracer_intersectBoundingBox(ray, currentNode->boundingBox)) {
+			if (currentNode->childNodeIndexes[0] != NODE_INDEX_UNDEF) {
+				for (uint32_t i = 0; i < 8; i++) {
+					nodesToCheck[nodesToCheckCount++] = currentNode->childNodeIndexes[i];
+				}
+			} else {
+				for (uint32_t i = 0; i < currentNode->sphereIndexCount; i++) {
+					bool containsIndexAlready = false;
+					for (uint32_t j = 0; j < sphereIndexArrayCount; j++) {
+						if (sphereIndexArray[j] == currentNode->sphereIndexes[i]) {
+							containsIndexAlready = true;
+							break;
+						}
+					}
+					if (!containsIndexAlready) {
+						sphereIndexArray[sphereIndexArrayCount++] = currentNode->sphereIndexes[i];
+					}
+				}
+
+				for (uint32_t i = 0; i < currentNode->triangleIndexCount; i++) {
+					bool containsIndexAlready = false;
+					for (uint32_t j = 0; j < triangleIndexArrayCount; j++) {
+						if (triangleIndexArray[j] == currentNode->triangleIndexes[i]) {
+							containsIndexAlready = true;
+							break;
+						}
+					}
+					if (!containsIndexAlready) {
+						triangleIndexArray[triangleIndexArrayCount++] = currentNode->triangleIndexes[i];
+					}
+				}
+			}
+		}
+	}
+
+	for (uint32_t i = 0; i < sphereIndexArrayCount; i++) {
+		SPHERES_QUALIFIER Sphere* sphere = &spheres[sphereIndexArray[i]];
+		float sphereHitDistance = FLT_MAX;
+		Vec3 sphereIntersectionNormal;
+		if (raytracer_intersectSphere(sphere, ray, &sphereHitDistance, &sphereIntersectionNormal)) {
+			if (sphereHitDistance < *minHitDistance) {
+				*intersectionNormal = sphereIntersectionNormal;
+				*minHitDistance = sphereHitDistance;
+				*hitMaterialIndex = sphere->materialIndex;
+			}
+		}
+	}
+
+	for (uint32_t i = 0; i < triangleIndexArrayCount; i++) {
+		TRIANGLES_QUALIFIER Triangle* triangle = &triangles[triangleIndexArray[i]];
+		float triangleHitDistance = FLT_MAX;
+		Vec3 triangleIntersectionNormal;
+		if (raytracer_intersectTriangle(triangle, ray, &triangleHitDistance, &triangleIntersectionNormal)) {
+			if (triangleHitDistance < *minHitDistance) {
+				*intersectionNormal = triangleIntersectionNormal;
+				*minHitDistance = triangleHitDistance;
+				*hitMaterialIndex = triangle->materialIndex;
+			}
+		}
+	}
 }
 
 static Vec3 raytracer_raycast_helper_0(CAMERA_QUALIFIER Camera* camera, MATERIALS_QUALIFIER Material* materials, uint32_t materialCount, 
 	PLANES_QUALIFIER Plane* planes, uint32_t planeCount, SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, 
 	TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, 
-	POINTLIGHTS_QUALIFIER PointLight* pointLights, uint32_t pointLightCount, Ray* primaryRay) {
+	POINTLIGHTS_QUALIFIER PointLight* pointLights, uint32_t pointLightCount, 
+	OCTREENODES_QUALIFIER OctreeNode* octreeNodes, uint32_t octreeNodeCount, Ray* primaryRay) {
 	Vec3 outColor;
 	outColor.r = 0.0f;
 	outColor.g = 0.0f;
@@ -433,7 +556,7 @@ static Vec3 raytracer_raycast_helper_0(CAMERA_QUALIFIER Camera* camera, MATERIAL
 static Vec3 raytracer_raycast_helper_##X(CAMERA_QUALIFIER Camera* camera, MATERIALS_QUALIFIER Material* materials, uint32_t materialCount, \
                                     PLANES_QUALIFIER Plane* planes, uint32_t planeCount, SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, \
 									TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, POINTLIGHTS_QUALIFIER PointLight* pointLights, uint32_t pointLightCount, \
-									Ray* primaryRay) { \
+									OCTREENODES_QUALIFIER OctreeNode* octreeNodes, uint32_t octreeNodeCount, Ray* primaryRay) { \
 	Vec3 outColor; \
 	outColor.r = 0.0f; \
 	outColor.g = 0.0f; \
@@ -443,8 +566,7 @@ static Vec3 raytracer_raycast_helper_##X(CAMERA_QUALIFIER Camera* camera, MATERI
 	uint32_t hitMaterialIndex = 0; \
 	Vec3 intersectionNormal; \
 	raytracer_calcClosestPlaneIntersect(planes, planeCount, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex); \
-	raytracer_calcClosestSphereIntersect(spheres, sphereCount, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex); \
-	raytracer_calcClosestTriangleIntersect(triangles, triangleCount, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex); \
+	raytracer_calcClosestIntersectUsingOctree(spheres, sphereCount, triangles, triangleCount, primaryRay, &minHitDistance, &intersectionNormal, &hitMaterialIndex, octreeNodes); \
 	\
 	if (hitMaterialIndex) { \
 		MATERIALS_QUALIFIER Material* hitMaterial = &materials[hitMaterialIndex]; \
@@ -464,14 +586,14 @@ static Vec3 raytracer_raycast_helper_##X(CAMERA_QUALIFIER Camera* camera, MATERI
 				refractedRay.origin = hitPoint; \
 				refractedRay.direction = raytracer_refract(primaryRay->direction, intersectionNormal, hitMaterial->refractionIndex); \
 				raytracer_moveRayOutOfObject(&refractedRay); \
-				refractionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &refractedRay); \
+				refractionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, octreeNodeCount, &refractedRay); \
 			} \
 			\
 			Ray reflectedRay; \
 			reflectedRay.origin = hitPoint; \
 			reflectedRay.direction = vec3_reflect(primaryRay->direction, intersectionNormal); \
 			raytracer_moveRayOutOfObject(&reflectedRay); \
-			Vec3 reflectionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &reflectedRay); \
+			Vec3 reflectionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, octreeNodeCount, &reflectedRay); \
 			/* mix the two */ \
 			outColor = vec3_add(outColor, vec3_add(vec3_mul(reflectionColor, kr), vec3_mul(refractionColor, (1 - kr)))); \
 		} else \
@@ -481,7 +603,7 @@ static Vec3 raytracer_raycast_helper_##X(CAMERA_QUALIFIER Camera* camera, MATERI
 			reflectedRay.origin = hitPoint; \
 			reflectedRay.direction = vec3_reflect(primaryRay->direction, intersectionNormal); \
 			raytracer_moveRayOutOfObject(&reflectedRay); \
-			Vec3 reflectionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &reflectedRay); \
+			Vec3 reflectionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, octreeNodeCount, &reflectedRay); \
 			outColor = vec3_add(outColor, vec3_mul(reflectionColor, hitMaterial->reflectionIndex)); \
 		} \
 			\
@@ -500,8 +622,7 @@ static Vec3 raytracer_raycast_helper_##X(CAMERA_QUALIFIER Camera* camera, MATERI
 			float closestHitDistance = FLT_MAX; \
 			Vec3 shadowRayIntersectionNormal; \
 			raytracer_calcClosestPlaneIntersect(planes, planeCount, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex); \
-			raytracer_calcClosestSphereIntersect(spheres, sphereCount, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex); \
-			raytracer_calcClosestTriangleIntersect(triangles, triangleCount, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex); \
+			raytracer_calcClosestIntersectUsingOctree(spheres, sphereCount, triangles, triangleCount, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex, octreeNodes); \
 			if (distanceToLight < closestHitDistance) { \
 				/* we hit the light */ \
 				float cosAngle = vec3_dot(shadowRay.direction, intersectionNormal); \
@@ -530,8 +651,9 @@ DEFINE_RAYCAST_HELPER(5, 4);
 
 Vec3 raytracer_raycast(CAMERA_QUALIFIER Camera* camera, MATERIALS_QUALIFIER Material* materials, uint32_t materialCount, 
 	PLANES_QUALIFIER Plane* planes, uint32_t planeCount, SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, 
-	TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, POINTLIGHTS_QUALIFIER PointLight* pointLights, uint32_t pointLightCount, Ray* primaryRay) {
-    return raytracer_raycast_helper_5(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, primaryRay);
+	TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, POINTLIGHTS_QUALIFIER PointLight* pointLights, uint32_t pointLightCount, 
+	OCTREENODES_QUALIFIER OctreeNode* octreeNodes, uint32_t octreeNodeCount, Ray* primaryRay) {
+    return raytracer_raycast_helper_5(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, octreeNodeCount, primaryRay);
 }
 
 
@@ -539,6 +661,7 @@ __kernel void raytrace(__global Camera* camera, __local Camera* sharedCamera, __
 	__global Plane* planes, __local Plane* sharedPlanes, uint32_t planeCount, __global Sphere* spheres, __local Sphere* sharedSpheres, uint32_t sphereCount,
 	__global Triangle* triangles, __local Triangle* sharedTriangles, uint32_t triangleCount,
 	__global PointLight* pointLights, __local PointLight* sharedPointLights, uint32_t pointLightCount,
+	__global OctreeNode* octreeNodes, __local OctreeNode* sharedOctreeNodes, uint32_t octreeNodeCount,
 	__write_only image2d_t image, float rayColorContribution, float deltaX, float deltaY,
 	float pixelWidth, float pixelHeight, uint32_t raysPerWidthPixel, uint32_t raysPerHeightPixel) {
 
@@ -584,6 +707,13 @@ __kernel void raytrace(__global Camera* camera, __local Camera* sharedCamera, __
 		}
 #define pointLights sharedPointLights
 #endif
+
+#ifdef USE_SHARED_MEMORY_OCTREENODES
+		for (uint32_t i = 0; i < octreeNodeCount; i++) {
+			sharedOctreeNodes[i] = octreeNodes[i];
+		}
+#define octreeNodes sharedOctreeNodes
+#endif
 		barrier(CLK_LOCAL_MEM_FENCE);
 	}
 #endif
@@ -612,7 +742,7 @@ __kernel void raytrace(__global Camera* camera, __local Camera* sharedCamera, __
 				vec3_norm(vec3_sub(renderTargetPos, camera->position))
 			};
 
-			Vec3 currentRayColor = raytracer_raycast(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, &ray);
+			Vec3 currentRayColor = raytracer_raycast(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, octreeNodeCount, &ray);
 			color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
 		}
 	}
