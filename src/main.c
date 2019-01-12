@@ -168,7 +168,7 @@ int main(int argc, char* argv[]) {
     gpu_destroyContext(context);
 	
 	image_destroy(image);
-	octree_delete(octree);
+	octree_destroy(octree);
 	scene_destroy(scene);
 
 	SDL_GL_DeleteContext(glContext);

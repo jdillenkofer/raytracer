@@ -31,6 +31,6 @@ typedef struct {
 } Octree;
 
 Octree* octree_buildFromScene(Scene* scene);
-void octree_delete(Octree* octree);
+void octree_destroy(Octree* octree);
 
 #endif //RAYTRACER_OCTREE_H
