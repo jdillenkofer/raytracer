@@ -468,14 +468,8 @@ static void raytracer_calcClosestPlaneIntersect(PLANES_QUALIFIER Plane* planes, 
 static void raytracer_calcClosestIntersectUsingOctree(SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, 
                                                  Ray* ray, float* minHitDistance, Vec3* intersectionNormal,
                                                  uint32_t* hitMaterialIndex, OCTREENODES_QUALIFIER OctreeNode* octreeNodes, OCTREEINDEX_QUALIFIER uint32_t* octreeIndexes) {
-	uint32_t nodesToCheck[1000];
+	uint32_t nodesToCheck[200];
 	uint32_t nodesToCheckCount = 0;
-
-	uint32_t sphereIndexArray[1000];
-	uint32_t sphereIndexArrayCount = 0;
-
-	uint32_t triangleIndexArray[1000];
-	uint32_t triangleIndexArrayCount = 0;
 
 	// push root to the stack
 	nodesToCheck[nodesToCheckCount++] = 0;
@@ -484,62 +478,39 @@ static void raytracer_calcClosestIntersectUsingOctree(SPHERES_QUALIFIER Sphere* 
 		uint32_t currentNodeIndex = nodesToCheck[--nodesToCheckCount];
 		OCTREENODES_QUALIFIER OctreeNode* currentNode = &octreeNodes[currentNodeIndex];
 		if (raytracer_intersectBoundingBox(ray, currentNode->boundingBox)) {
+			// if we have a inner node we just add all children to the search
 			if (currentNode->childNodeIndexes[0] != NODE_INDEX_UNDEF) {
 				for (uint32_t i = 0; i < 8; i++) {
 					nodesToCheck[nodesToCheckCount++] = currentNode->childNodeIndexes[i];
 				}
+			// otherwise we have a leaf node
 			} else {
+
 				for (uint32_t i = 0; i < currentNode->sphereIndexCount; i++) {
-					bool containsIndexAlready = false;
-					for (uint32_t j = 0; j < sphereIndexArrayCount; j++) {
-						if (sphereIndexArray[j] == octreeIndexes[i + currentNode->sphereIndexOffset]) {
-							containsIndexAlready = true;
-							break;
+					SPHERES_QUALIFIER Sphere* sphere = &spheres[octreeIndexes[i + currentNode->sphereIndexOffset]];
+					float sphereHitDistance = FLT_MAX;
+					Vec3 sphereIntersectionNormal;
+					if (raytracer_intersectSphere(sphere, ray, &sphereHitDistance, &sphereIntersectionNormal)) {
+						if (sphereHitDistance < *minHitDistance) {
+							*intersectionNormal = sphereIntersectionNormal;
+							*minHitDistance = sphereHitDistance;
+							*hitMaterialIndex = sphere->materialIndex;
 						}
-					}
-					if (!containsIndexAlready) {
-						sphereIndexArray[sphereIndexArrayCount++] = octreeIndexes[i + currentNode->sphereIndexOffset];
 					}
 				}
 
 				for (uint32_t i = 0; i < currentNode->triangleIndexCount; i++) {
-					bool containsIndexAlready = false;
-					for (uint32_t j = 0; j < triangleIndexArrayCount; j++) {
-						if (triangleIndexArray[j] == octreeIndexes[i + currentNode->triangleIndexOffset]) {
-							containsIndexAlready = true;
-							break;
+					TRIANGLES_QUALIFIER Triangle* triangle = &triangles[octreeIndexes[i + currentNode->triangleIndexOffset]];
+					float triangleHitDistance = FLT_MAX;
+					Vec3 triangleIntersectionNormal;
+					if (raytracer_intersectTriangle(triangle, ray, &triangleHitDistance, &triangleIntersectionNormal)) {
+						if (triangleHitDistance < *minHitDistance) {
+							*intersectionNormal = triangleIntersectionNormal;
+							*minHitDistance = triangleHitDistance;
+							*hitMaterialIndex = triangle->materialIndex;
 						}
 					}
-					if (!containsIndexAlready) {
-						triangleIndexArray[triangleIndexArrayCount++] = octreeIndexes[i + currentNode->triangleIndexOffset];
-					}
 				}
-			}
-		}
-	}
-
-	for (uint32_t i = 0; i < sphereIndexArrayCount; i++) {
-		SPHERES_QUALIFIER Sphere* sphere = &spheres[sphereIndexArray[i]];
-		float sphereHitDistance = FLT_MAX;
-		Vec3 sphereIntersectionNormal;
-		if (raytracer_intersectSphere(sphere, ray, &sphereHitDistance, &sphereIntersectionNormal)) {
-			if (sphereHitDistance < *minHitDistance) {
-				*intersectionNormal = sphereIntersectionNormal;
-				*minHitDistance = sphereHitDistance;
-				*hitMaterialIndex = sphere->materialIndex;
-			}
-		}
-	}
-
-	for (uint32_t i = 0; i < triangleIndexArrayCount; i++) {
-		TRIANGLES_QUALIFIER Triangle* triangle = &triangles[triangleIndexArray[i]];
-		float triangleHitDistance = FLT_MAX;
-		Vec3 triangleIntersectionNormal;
-		if (raytracer_intersectTriangle(triangle, ray, &triangleHitDistance, &triangleIntersectionNormal)) {
-			if (triangleHitDistance < *minHitDistance) {
-				*intersectionNormal = triangleIntersectionNormal;
-				*minHitDistance = triangleHitDistance;
-				*hitMaterialIndex = triangle->materialIndex;
 			}
 		}
 	}
