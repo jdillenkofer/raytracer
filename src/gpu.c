@@ -249,6 +249,14 @@ static bool gpu_setupKernel(GPUContext* context, Scene* scene, Octree* octree, u
 		sharedMemCameraSize = 0;
 	}
 
+	if (availableLocalMemSize >= sharedMemOctreeNodesSize) {
+		useSharedMemOctreeNodes = true;
+		availableLocalMemSize -= sharedMemOctreeNodesSize;
+	}
+	else {
+		sharedMemOctreeNodesSize = 0;
+	}
+
 	if (availableLocalMemSize >= sharedMemMaterialsSize) {
 		useSharedMemMaterials = true;
 		availableLocalMemSize -= sharedMemMaterialsSize;
@@ -282,13 +290,6 @@ static bool gpu_setupKernel(GPUContext* context, Scene* scene, Octree* octree, u
 		availableLocalMemSize -= sharedMemPointLightsSize;
 	} else {
 		sharedMemPointLightsSize = 0;
-	}
-
-	if (availableLocalMemSize >= sharedMemOctreeNodesSize) {
-		useSharedMemOctreeNodes = true;
-		availableLocalMemSize -= sharedMemOctreeNodesSize;
-	} else {
-		sharedMemOctreeNodesSize = 0;
 	}
 
 	if (useSharedMemCamera || useSharedMemMaterials || useSharedMemPlanes || useSharedMemSpheres || useSharedMemTriangles || useSharedMemPointLights || useSharedMemOctreeNodes) {

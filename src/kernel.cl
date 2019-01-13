@@ -544,7 +544,7 @@ static Vec3 raytracer_raycast_helper_0(CAMERA_QUALIFIER Camera* camera, MATERIAL
 	PLANES_QUALIFIER Plane* planes, uint32_t planeCount, SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, 
 	TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, 
 	POINTLIGHTS_QUALIFIER PointLight* pointLights, uint32_t pointLightCount, 
-	OCTREENODES_QUALIFIER OctreeNode* octreeNodes, uint32_t octreeNodeCount, Ray* primaryRay) {
+	OCTREENODES_QUALIFIER OctreeNode* octreeNodes, Ray* primaryRay) {
 	Vec3 outColor;
 	outColor.r = 0.0f;
 	outColor.g = 0.0f;
@@ -556,7 +556,7 @@ static Vec3 raytracer_raycast_helper_0(CAMERA_QUALIFIER Camera* camera, MATERIAL
 static Vec3 raytracer_raycast_helper_##X(CAMERA_QUALIFIER Camera* camera, MATERIALS_QUALIFIER Material* materials, uint32_t materialCount, \
                                     PLANES_QUALIFIER Plane* planes, uint32_t planeCount, SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, \
 									TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, POINTLIGHTS_QUALIFIER PointLight* pointLights, uint32_t pointLightCount, \
-									OCTREENODES_QUALIFIER OctreeNode* octreeNodes, uint32_t octreeNodeCount, Ray* primaryRay) { \
+									OCTREENODES_QUALIFIER OctreeNode* octreeNodes, Ray* primaryRay) { \
 	Vec3 outColor; \
 	outColor.r = 0.0f; \
 	outColor.g = 0.0f; \
@@ -586,14 +586,14 @@ static Vec3 raytracer_raycast_helper_##X(CAMERA_QUALIFIER Camera* camera, MATERI
 				refractedRay.origin = hitPoint; \
 				refractedRay.direction = raytracer_refract(primaryRay->direction, intersectionNormal, hitMaterial->refractionIndex); \
 				raytracer_moveRayOutOfObject(&refractedRay); \
-				refractionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, octreeNodeCount, &refractedRay); \
+				refractionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, &refractedRay); \
 			} \
 			\
 			Ray reflectedRay; \
 			reflectedRay.origin = hitPoint; \
 			reflectedRay.direction = vec3_reflect(primaryRay->direction, intersectionNormal); \
 			raytracer_moveRayOutOfObject(&reflectedRay); \
-			Vec3 reflectionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, octreeNodeCount, &reflectedRay); \
+			Vec3 reflectionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, &reflectedRay); \
 			/* mix the two */ \
 			outColor = vec3_add(outColor, vec3_add(vec3_mul(reflectionColor, kr), vec3_mul(refractionColor, (1 - kr)))); \
 		} else \
@@ -603,7 +603,7 @@ static Vec3 raytracer_raycast_helper_##X(CAMERA_QUALIFIER Camera* camera, MATERI
 			reflectedRay.origin = hitPoint; \
 			reflectedRay.direction = vec3_reflect(primaryRay->direction, intersectionNormal); \
 			raytracer_moveRayOutOfObject(&reflectedRay); \
-			Vec3 reflectionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, octreeNodeCount, &reflectedRay); \
+			Vec3 reflectionColor = raytracer_raycast_helper_##Y(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, &reflectedRay); \
 			outColor = vec3_add(outColor, vec3_mul(reflectionColor, hitMaterial->reflectionIndex)); \
 		} \
 			\
@@ -652,8 +652,8 @@ DEFINE_RAYCAST_HELPER(5, 4);
 Vec3 raytracer_raycast(CAMERA_QUALIFIER Camera* camera, MATERIALS_QUALIFIER Material* materials, uint32_t materialCount, 
 	PLANES_QUALIFIER Plane* planes, uint32_t planeCount, SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, 
 	TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, POINTLIGHTS_QUALIFIER PointLight* pointLights, uint32_t pointLightCount, 
-	OCTREENODES_QUALIFIER OctreeNode* octreeNodes, uint32_t octreeNodeCount, Ray* primaryRay) {
-    return raytracer_raycast_helper_5(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, octreeNodeCount, primaryRay);
+	OCTREENODES_QUALIFIER OctreeNode* octreeNodes, Ray* primaryRay) {
+    return raytracer_raycast_helper_5(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, primaryRay);
 }
 
 
@@ -742,7 +742,7 @@ __kernel void raytrace(__global Camera* camera, __local Camera* sharedCamera, __
 				vec3_norm(vec3_sub(renderTargetPos, camera->position))
 			};
 
-			Vec3 currentRayColor = raytracer_raycast(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, octreeNodeCount, &ray);
+			Vec3 currentRayColor = raytracer_raycast(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, &ray);
 			color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));
 		}
 	}
