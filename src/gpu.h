@@ -40,6 +40,7 @@ typedef struct {
 		cl_mem triangles;
 		cl_mem pointLights;
 		cl_mem octreeNodes;
+		cl_mem octreeIndexes;
 		cl_int err;
 	} cl;
 	struct {

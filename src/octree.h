@@ -4,7 +4,7 @@
 #include "scene.h"
 #include "utils/vec3.h"
 
-#define MAX_ELEMENTS_PER_NODE 34
+#define MIN_ELEMENTS_PER_NODE 8
 #define NODE_INDEX_UNDEF -1
 
 typedef struct {
@@ -15,10 +15,10 @@ typedef struct {
 typedef struct {
 	BoundingBox boundingBox;
 
-	uint32_t sphereIndexes[MAX_ELEMENTS_PER_NODE];
+	uint32_t sphereIndexOffset;
 	uint32_t sphereIndexCount;
 
-	uint32_t triangleIndexes[MAX_ELEMENTS_PER_NODE];
+	uint32_t triangleIndexOffset;
 	uint32_t triangleIndexCount;
 
 	int32_t childNodeIndexes[8];
@@ -28,6 +28,9 @@ typedef struct {
 	OctreeNode* nodes;
 	uint32_t nodeCount;
 	uint32_t nodeCapacity;
+	uint32_t* indexes;
+	uint32_t indexCount;
+	uint32_t indexCapacity;
 } Octree;
 
 Octree* octree_buildFromScene(Scene* scene);

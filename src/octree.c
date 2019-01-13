@@ -73,6 +73,10 @@ static void octree_shrinkToFit(Octree* octree) {
 		octree->nodes = realloc(octree->nodes, sizeof(OctreeNode) * octree->nodeCount);
 		octree->nodeCapacity = octree->nodeCount;
 	}
+	if (octree->indexCapacity > octree->indexCount) {
+		octree->indexes = realloc(octree->indexes, sizeof(uint32_t) * octree->indexCount);
+		octree->indexCapacity = octree->indexCount;
+	}
 }
 
 static bool octree_intersectSphere(Sphere* sphere, BoundingBox boundingBox) {
@@ -257,7 +261,8 @@ static void octree_buildNode(Octree* octree, Scene* scene, int32_t nodeId,
 		triangleElementsCapacity = triangleElementsInside;
 	}
 
-	if (sphereElementsInside > MAX_ELEMENTS_PER_NODE || triangleElementsInside > MAX_ELEMENTS_PER_NODE) {
+	// we keep splitting, if our subdivision has changed one of the array sizes
+	if ((sphereIndexCount != sphereElementsInside || triangleIndexCount != triangleElementsInside || nodeId == 0) && !(sphereElementsInside < MIN_ELEMENTS_PER_NODE && triangleElementsInside < MIN_ELEMENTS_PER_NODE)) {
 		Vec3 diagonal = vec3_sub(boundingBox.topRightBackCorner, boundingBox.bottomLeftFrontCorner);
 		Vec3 halfDiagonal = vec3_mul(diagonal, 0.5f);
 		Vec3 centerOfBoundingBox = vec3_add(boundingBox.bottomLeftFrontCorner, halfDiagonal);
@@ -351,17 +356,27 @@ static void octree_buildNode(Octree* octree, Scene* scene, int32_t nodeId,
 			currentNode->childNodeIndexes[i] = NODE_INDEX_UNDEF;
 		}
 		
-		// copy the spheres
-		for (uint32_t i = 0; i < sphereElementsInside; i++) {
-			currentNode->sphereIndexes[i] = sphereIndexesInside[i];
+		// realloc index array, if too small
+		if (octree->indexCount + sphereElementsInside + triangleElementsInside > octree->indexCapacity) {
+			octree->indexCapacity = octree->indexCapacity + octree->indexCount + sphereElementsInside + triangleElementsInside;
+			octree->indexes = realloc(octree->indexes, sizeof(uint32_t) * octree->indexCapacity);
 		}
+
+		// copy the spheres
+		currentNode->sphereIndexOffset = octree->indexCount;
 		currentNode->sphereIndexCount = sphereElementsInside;
+		for (uint32_t i = 0; i < sphereElementsInside; i++) {
+			octree->indexes[i + octree->indexCount] = sphereIndexesInside[i];
+		}
+		octree->indexCount += sphereElementsInside;
 
 		// copy the triangles
-		for (uint32_t i = 0; i < triangleElementsInside; i++) {
-			currentNode->triangleIndexes[i] = triangleIndexesInside[i];
-		}
+		currentNode->triangleIndexOffset = octree->indexCount;
 		currentNode->triangleIndexCount = triangleElementsInside;
+		for (uint32_t i = 0; i < triangleElementsInside; i++) {
+			octree->indexes[i + octree->indexCount] = triangleIndexesInside[i];
+		}
+		octree->indexCount += triangleElementsInside;
 	}
 	free(sphereIndexesInside);
 	free(triangleIndexesInside);
@@ -376,6 +391,9 @@ Octree* octree_buildFromScene(Scene* scene) {
 	octree->nodeCapacity = 1;
 	octree->nodeCount = 0;
 	octree->nodes = malloc(sizeof(OctreeNode) * octree->nodeCapacity);
+	octree->indexCapacity = 1;
+	octree->indexCount= 0;
+	octree->indexes = malloc(sizeof(uint32_t) * octree->indexCapacity);
 
 	BoundingBox rootBoundingBox = octree_calculateRootBoundingBox(scene);
 	
@@ -398,17 +416,13 @@ Octree* octree_buildFromScene(Scene* scene) {
 	free(triangleIndexes);
 	
 	octree_shrinkToFit(octree);
-	uint32_t triangles = 0;
-	for (uint32_t i = 0; i < octree->nodeCount; i++) {
-		OctreeNode* octreeNode = &octree->nodes[i];
-		triangles += octreeNode->triangleIndexCount;
-	}
 	return octree;
 }
 
 void octree_destroy(Octree* octree) {
 	if (octree) {
 		free(octree->nodes);
+		free(octree->indexes);
 		free(octree);
 	}
 }
