@@ -6,6 +6,10 @@
 typedef struct {
 	float reflectionIndex;
 	float refractionIndex;
+    float ambientWeight;
+    float diffuseWeight;
+    float specularWeight;
+    float specularExponent;
     Vec3 color;
 } Material;
 

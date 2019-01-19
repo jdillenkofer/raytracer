@@ -1,5 +1,7 @@
 #include "gpu.h"
 
+#include <math.h>
+#include "utils/random.h"
 #include "utils/stringbuilder.h"
 
 // -------------------- OPENCL STATIC DECLS --------------------
@@ -149,6 +151,23 @@ static cl_mem gpu_createOctreeIndexesBuffer(GPUContext* context, Octree* octree)
 	return dev_octreeIndexes;
 }
 
+static cl_mem gpu_createRandomSeedBuffer(GPUContext* context, Scene* scene) {
+    size_t seedSize = sizeof(seed128bit) * scene->camera->width * scene->camera->height;
+    seed128bit* seed = malloc(seedSize);
+    for (uint32_t i = 0; i < scene->camera->width * scene->camera->height; i++) {
+        seed128bit rSeed;
+        rSeed.x = rand();
+        rSeed.y = rand();
+        seed[i] = rSeed;
+    }
+    cl_mem dev_randomSeed = (void*)clCreateBuffer(context->cl.ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, seedSize, seed, &context->cl.err);
+    if (context->cl.err != CL_SUCCESS) {
+        printf("Couldn't create dev_randomSeed.\n");
+        return NULL;
+    }
+    return dev_randomSeed;
+}
+
 static GPUContext* gpu_initCLContext() {
 	GPUContext* context = malloc(sizeof(GPUContext));
 	clGetPlatformIDs(1, &context->cl.platformId, NULL);
@@ -214,6 +233,10 @@ static bool gpu_allocateCLMemory(GPUContext* context, Scene* scene, Octree* octr
 	if (!context->cl.octreeIndexes) {
 		return false;
 	}
+    context->cl.randomSeed = gpu_createRandomSeedBuffer(context, scene);
+    if (!context->cl.randomSeed) {
+        return false;
+    }
 	return true;
 }
 
@@ -429,14 +452,15 @@ static bool gpu_setupKernel(GPUContext* context, Scene* scene, Octree* octree, u
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 20, sizeof(cl_mem), &context->cl.octreeIndexes);
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 21, sharedMemOctreeIndexesSize, NULL); // sharedMemory octreeIndexes
 	context->cl.err |= clSetKernelArg(raytrace_kernel, 22, sizeof(uint32_t), &octree->indexCount);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 23, sizeof(cl_mem), &context->cl.image);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 24, sizeof(float), &rayColorContribution);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 25, sizeof(float), &deltaX);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 26, sizeof(float), &deltaY);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 27, sizeof(float), &pixelWidth);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 28, sizeof(float), &pixelHeight);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 29, sizeof(uint32_t), &raysPerWidthPixel);
-	context->cl.err |= clSetKernelArg(raytrace_kernel, 30, sizeof(uint32_t), &raysPerHeightPixel);
+    context->cl.err |= clSetKernelArg(raytrace_kernel, 23, sizeof(cl_mem), &context->cl.randomSeed);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 24, sizeof(cl_mem), &context->cl.image);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 25, sizeof(float), &rayColorContribution);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 26, sizeof(float), &deltaX);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 27, sizeof(float), &deltaY);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 28, sizeof(float), &pixelWidth);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 29, sizeof(float), &pixelHeight);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 30, sizeof(uint32_t), &raysPerWidthPixel);
+	context->cl.err |= clSetKernelArg(raytrace_kernel, 31, sizeof(uint32_t), &raysPerHeightPixel);
 	if (context->cl.err != CL_SUCCESS) {
 		printf("Couldn't set all kernel args correctly.\n");
 		return false;
@@ -454,6 +478,7 @@ static void gpu_deleteCLMemory(GPUContext* context) {
 	clReleaseMemObject(context->cl.pointLights);
 	clReleaseMemObject(context->cl.octreeNodes);
 	clReleaseMemObject(context->cl.octreeIndexes);
+    clReleaseMemObject(context->cl.randomSeed);
 }
 
 // -------------------- OPENGL--------------------

@@ -41,6 +41,7 @@ typedef struct {
 		cl_mem pointLights;
 		cl_mem octreeNodes;
 		cl_mem octreeIndexes;
+        cl_mem randomSeed;
 		cl_int err;
 	} cl;
 	struct {

@@ -43,31 +43,55 @@ Scene* scene_init(uint32_t width, uint32_t height) {
 		background.color = (Vec3) { 0.0f, 0.0f, 0.0f };
 		background.reflectionIndex = 0.0f;
 		background.refractionIndex = 0.0f;
+        background.ambientWeight = 0.0f;
+        background.diffuseWeight = 0.0f;
+        background.specularWeight = 0.0f;
+        background.specularExponent = 1.0f;
 		scene_addMaterial(scene, background);
 
 		Material grey = { 0 };
 		grey.color = (Vec3) { 0.4f, 0.4f, 0.4f };
 		grey.reflectionIndex = 0.0f;
+        grey.ambientWeight = 1.0f;
+        grey.diffuseWeight = 0.0f;
+        grey.specularWeight = 0.0f;
+        grey.specularExponent = 1.0f;
 		uint32_t greyId = scene_addMaterial(scene, grey);
 
 		Material redMirror = { 0 };
 		redMirror.color = (Vec3) { 1.0f, 0.0f, 0.0f };
 		redMirror.reflectionIndex = 1.0f;
+        redMirror.ambientWeight = 0.2f;
+        redMirror.diffuseWeight = 1.0f;
+        redMirror.specularWeight = 1.0f;
+        redMirror.specularExponent = 64.0f;
 		uint32_t redMirrorId = scene_addMaterial(scene, redMirror);
 
 		Material mirror = { 0 };
 		mirror.color = (Vec3) { 1.0f, 1.0f, 1.0f };
 		mirror.reflectionIndex = 1.0f;
+        mirror.ambientWeight = 0.2f;
+        mirror.diffuseWeight = 1.0f;
+        mirror.specularWeight = 1.0f;
+        mirror.specularExponent = 64.0f;
 		uint32_t mirrorId = scene_addMaterial(scene, mirror);
 
 		Material glass = { 0 };
 		glass.color = (Vec3) { 1.0f, 1.0f, 1.0f };
 		glass.reflectionIndex = 1.0f;
 		glass.refractionIndex = 1.4f;
+        glass.ambientWeight = 0.0f;
+        glass.diffuseWeight = 0.0f;
+        glass.specularWeight = 0.0f;
+        glass.specularExponent = 1.0f;
 		uint32_t glassId = scene_addMaterial(scene, glass);
 
 		Material yellow = { 0 };
 		yellow.color = (Vec3) { 1.0f, 0.6549f, 0.1019f };
+        yellow.ambientWeight = 0.2f;
+        yellow.diffuseWeight = 1.0f;
+        yellow.specularWeight = 1.0f;
+        yellow.specularExponent = 64.0f;
 		uint32_t yellowId = scene_addMaterial(scene, yellow);
 
 		Plane floor = { 0 };
@@ -126,9 +150,9 @@ Scene* scene_init(uint32_t width, uint32_t height) {
 		scene_addTriangle(scene, triangle);
 
 		PointLight pointLight = { 0 };
-		pointLight.position = (Vec3) { 0.0f, 10.0f, 10.0f };
+		pointLight.position = (Vec3) { 0.0f, 20.0f, 10.0f };
 		pointLight.emissionColor = (Vec3) { 1.0f, 1.0f, 1.0f };
-		pointLight.strength = 1500.0f;
+		pointLight.strength = 10000.0f;
 		scene_addPointLight(scene, pointLight);
 
 		/*
