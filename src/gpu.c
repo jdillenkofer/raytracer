@@ -161,6 +161,7 @@ static cl_mem gpu_createRandomSeedBuffer(GPUContext* context, Scene* scene) {
         seed[i] = rSeed;
     }
     cl_mem dev_randomSeed = (void*)clCreateBuffer(context->cl.ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, seedSize, seed, &context->cl.err);
+    free(seed);
     if (context->cl.err != CL_SUCCESS) {
         printf("Couldn't create dev_randomSeed.\n");
         return NULL;

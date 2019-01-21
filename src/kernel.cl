@@ -756,10 +756,10 @@ __kernel void raytrace(__global Camera* camera, __local Camera* sharedCamera, __
 	// Supersampling loops
 	for (uint32_t j = 0; j < raysPerHeightPixel; j++) {
 		Vec3 OffsetY = vec3_mul(camera->y,
-			(PosY - pixelHeight + j * deltaY)*camera->renderTargetHeight / 2.0f);
+			(PosY - pixelHeight + j * deltaY) * camera->renderTargetHeight / 2.0f);
 		for (uint32_t i = 0; i < raysPerWidthPixel; i++) {
 			Vec3 OffsetX = vec3_mul(camera->x,
-				(PosX - pixelWidth + i * deltaX)*camera->renderTargetWidth / 2.0f);
+				(PosX - pixelWidth + i * deltaX) * camera->renderTargetWidth / 2.0f);
 			// (0, 0) is the top left
 			// so we have to sample the texture with flipped y
 			Vec3 renderTargetPos = vec3_sub(vec3_add(camera->renderTargetCenter, OffsetX), OffsetY);
