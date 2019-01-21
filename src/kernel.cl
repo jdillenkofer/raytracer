@@ -469,6 +469,20 @@ static bool raytracer_intersectBoundingBox(Ray* ray, BoundingBox boundingBox) {
 	return true;
 }
 
+static bool raytracer_isAnyPlaneIntersectCloserThan(PLANES_QUALIFIER Plane* planes, uint32_t planeCount, Ray* ray, float minDistance) {
+    for (uint32_t i = 0; i < planeCount; i++) {
+        PLANES_QUALIFIER Plane* plane = &planes[i];
+        float planeHitDistance = FLT_MAX;
+        Vec3 planeIntersectionNormal;
+        if (raytracer_intersectPlane(plane, ray, &planeHitDistance, &planeIntersectionNormal)) {
+            if (planeHitDistance < minDistance) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 static void raytracer_calcClosestPlaneIntersect(PLANES_QUALIFIER Plane* planes, uint32_t planeCount, Ray* ray, float* minHitDistance, Vec3* intersectionNormal,
                                                 uint32_t* hitMaterialIndex) {
     for (uint32_t i = 0; i < planeCount; i++) {
@@ -483,6 +497,54 @@ static void raytracer_calcClosestPlaneIntersect(PLANES_QUALIFIER Plane* planes, 
             }
         }
     }
+}
+
+static bool raytracer_isAnyIntersectUsingOctreeCloserThan(SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount,
+    Ray* ray, OCTREENODES_QUALIFIER OctreeNode* octreeNodes, OCTREEINDEX_QUALIFIER uint32_t* octreeIndexes, float minDistance) {
+    uint32_t nodesToCheck[200];
+    uint32_t nodesToCheckCount = 0;
+
+    // push root to the stack
+    nodesToCheck[nodesToCheckCount++] = 0;
+
+    while (nodesToCheckCount > 0) {
+        uint32_t currentNodeIndex = nodesToCheck[--nodesToCheckCount];
+        OCTREENODES_QUALIFIER OctreeNode* currentNode = &octreeNodes[currentNodeIndex];
+        if (raytracer_intersectBoundingBox(ray, currentNode->boundingBox)) {
+            // if we have a inner node we just add all children to the search
+            if (currentNode->childNodeIndexes[0] != NODE_INDEX_UNDEF) {
+                for (uint32_t i = 0; i < 8; i++) {
+                    nodesToCheck[nodesToCheckCount++] = currentNode->childNodeIndexes[i];
+                }
+                // otherwise we have a leaf node
+            }
+            else {
+
+                for (uint32_t i = 0; i < currentNode->sphereIndexCount; i++) {
+                    SPHERES_QUALIFIER Sphere* sphere = &spheres[octreeIndexes[i + currentNode->sphereIndexOffset]];
+                    float sphereHitDistance = FLT_MAX;
+                    Vec3 sphereIntersectionNormal;
+                    if (raytracer_intersectSphere(sphere, ray, &sphereHitDistance, &sphereIntersectionNormal)) {
+                        if (sphereHitDistance < minDistance) {
+                            return true;
+                        }
+                    }
+                }
+
+                for (uint32_t i = 0; i < currentNode->triangleIndexCount; i++) {
+                    TRIANGLES_QUALIFIER Triangle* triangle = &triangles[octreeIndexes[i + currentNode->triangleIndexOffset]];
+                    float triangleHitDistance = FLT_MAX;
+                    Vec3 triangleIntersectionNormal;
+                    if (raytracer_intersectTriangle(triangle, ray, &triangleHitDistance, &triangleIntersectionNormal)) {
+                        if (triangleHitDistance < minDistance) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return false;
 }
 
 static void raytracer_calcClosestIntersectUsingOctree(SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount, 
@@ -626,13 +688,10 @@ static Vec3 raytracer_raycast_helper_##X(CAMERA_QUALIFIER Camera* camera, MATERI
 			    shadowRay.origin = hitPoint; \
 			    shadowRay.direction = vec3_norm(hitToLight); \
 			    raytracer_moveRayOutOfObject(&shadowRay); \
-			    uint32_t shadowRayHitMaterialIndex = 0; \
-			    float closestHitDistance = FLT_MAX; \
-			    Vec3 shadowRayIntersectionNormal; \
-			    raytracer_calcClosestPlaneIntersect(planes, planeCount, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex); \
-			    raytracer_calcClosestIntersectUsingOctree(spheres, sphereCount, triangles, triangleCount, &shadowRay, &closestHitDistance, &shadowRayIntersectionNormal, &shadowRayHitMaterialIndex, octreeNodes, octreeIndexes); \
-			    if (distanceToLight < closestHitDistance) { \
-				    /* we hit the light */ \
+                \
+			    if (!raytracer_isAnyPlaneIntersectCloserThan(planes, planeCount, &shadowRay, distanceToLight) && \
+			        !raytracer_isAnyIntersectUsingOctreeCloserThan(spheres, sphereCount, triangles, triangleCount, &shadowRay, octreeNodes, octreeIndexes, distanceToLight)) { \
+			        /* we hit the light */ \
 				    float cosAngle = vec3_dot(shadowRay.direction, intersectionNormal); \
 				    cosAngle = math_clamp(cosAngle, 0.0f, 1.0f); \
 				    float lightAttenuation = 1.0f / (1.0f + 4 * PI * distanceToLightSquared); \
