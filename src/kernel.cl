@@ -197,7 +197,7 @@ typedef struct {
     Vec3 x, y, z;
     Vec3 lookAt;
     uint32_t width, height;
-    float FOV, aspectRatio;
+    float FOV, aspectRatio, focalLength, apertureSize;
     Vec3 renderTargetCenter;
     float renderTargetWidth, renderTargetHeight, renderTargetDistance;
 } Camera;
@@ -767,6 +767,14 @@ __kernel void raytrace(__global Camera* camera, __local Camera* sharedCamera, __
 				camera->position,
 				vec3_norm(vec3_sub(renderTargetPos, camera->position))
 			};
+            // depth of field calculation
+            Vec3 focalPoint = vec3_add(ray.origin, vec3_mul(ray.direction, camera->focalLength));
+            Vec3 randomOffset;
+            randomOffset.x = random_bilateral(seed) / 2.0f;
+            randomOffset.y = random_bilateral(seed) / 2.0f;
+            randomOffset.z = random_bilateral(seed) / 2.0f;
+            ray.origin = vec3_add(ray.origin, vec3_mul(randomOffset, camera->apertureSize));
+            ray.direction = vec3_norm(vec3_sub(focalPoint, ray.origin));
 
 			Vec3 currentRayColor = raytracer_raycast(camera, materials, materialCount, planes, planeCount, spheres, sphereCount, triangles, triangleCount, pointLights, pointLightCount, octreeNodes, octreeIndexes, seed, &ray);
 			color = vec3_add(color, vec3_mul(currentRayColor, rayColorContribution));

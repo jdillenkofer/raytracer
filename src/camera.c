@@ -31,7 +31,7 @@ void camera_setup(Camera *camera) {
     camera->renderTargetCenter = vec3_sub(camera->position, vec3_mul(camera->z, camera->renderTargetDistance));
 }
 
-Camera* camera_create(Vec3 position, Vec3 lookAt, uint32_t width, uint32_t height, float FOV) {
+Camera* camera_create(Vec3 position, Vec3 lookAt, uint32_t width, uint32_t height, float FOV, float apertureSize) {
     Camera* camera = malloc(sizeof(Camera));
     camera->position = position;
     camera->width = width;
@@ -39,6 +39,8 @@ Camera* camera_create(Vec3 position, Vec3 lookAt, uint32_t width, uint32_t heigh
     camera->aspectRatio = (float) width/ (float)height;
     camera->lookAt = lookAt;
     camera->FOV = FOV;
+    camera->focalLength = vec3_length(vec3_sub(position, lookAt));
+    camera->apertureSize = apertureSize;
     camera_setup(camera);
     return camera;
 }

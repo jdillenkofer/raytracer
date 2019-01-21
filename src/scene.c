@@ -35,7 +35,8 @@ Scene* scene_init(uint32_t width, uint32_t height) {
 		Vec3 camera_pos = { 40.0f , 2.0f, 0.0f };
 		Vec3 lookAt = (Vec3) { 0.0f, 0.0f, 0.0f };
 		float FOV = 110.0f;
-		Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV);
+        float apertureSize = 0.0f;
+		Camera* camera = camera_create(camera_pos, lookAt, width, height, FOV, apertureSize);
 		scene->camera = camera;
 
 		// background has to be added first

@@ -15,7 +15,7 @@
 #include "utils/random.h"
 #include "utils/math.h"
 
-#define MS_PER_UPDATE 1000.0 / 120.0
+#define MS_PER_UPDATE 1000.0 / 60.0
 
 // degrees per tick
 #define CAMERA_ROTATION_SPEED 0.25f;
