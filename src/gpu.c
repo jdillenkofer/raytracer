@@ -26,8 +26,9 @@ GPUContext* gpu_initContext(Scene* scene, Octree* octree, uint32_t raysPerPixel)
 		return NULL;
 	}
 	gpu_initGLContext(context, scene->camera->width, scene->camera->height);
-	gpu_allocateCLMemory(context, scene, octree);
-	gpu_setupKernel(context, scene, octree, raysPerPixel);
+    if (!gpu_allocateCLMemory(context, scene, octree) || !gpu_setupKernel(context, scene, octree, raysPerPixel)) {
+        return NULL;
+    }
 	return context;
 }
 
@@ -206,34 +207,56 @@ static bool gpu_allocateCLMemory(GPUContext* context, Scene* scene, Octree* octr
 	if (!context->cl.camera) {
 		return false;
 	}
-	context->cl.materials = gpu_createMaterialsBuffer(context, scene);
-	if (!context->cl.materials) {
-		return false;
-	}
-	context->cl.planes = gpu_createPlanesBuffer(context, scene);
-	if (!context->cl.planes) {
-		return false;
-	}
-	context->cl.spheres = gpu_createSpheresBuffer(context, scene);
-	if (!context->cl.spheres) {
-		return false;
-	}
-	context->cl.triangles = gpu_createTrianglesBuffer(context, scene);
-	if (!context->cl.triangles) {
-		return false;
-	}
-	context->cl.pointLights = gpu_createPointLightsBuffer(context, scene);
-	if (!context->cl.pointLights) {
-		return false;
-	}
-	context->cl.octreeNodes = gpu_createOctreeNodesBuffer(context, octree);
-	if (!context->cl.octreeNodes) {
-		return false;
-	}
-	context->cl.octreeIndexes = gpu_createOctreeIndexesBuffer(context, octree);
-	if (!context->cl.octreeIndexes) {
-		return false;
-	}
+    
+    if (scene->materialCount > 0) {
+        context->cl.materials = gpu_createMaterialsBuffer(context, scene);
+        if (!context->cl.materials) {
+            return false;
+        }
+    }
+    
+    if (scene->planeCount > 0) {
+        context->cl.planes = gpu_createPlanesBuffer(context, scene);
+        if (!context->cl.planes) {
+            return false;
+        }
+    }
+    
+    if (scene->sphereCount > 0) {
+        context->cl.spheres = gpu_createSpheresBuffer(context, scene);
+        if (!context->cl.spheres) {
+            return false;
+        }
+    }
+
+    if (scene->triangleCount > 0) {
+        context->cl.triangles = gpu_createTrianglesBuffer(context, scene);
+        if (!context->cl.triangles) {
+            return false;
+        }
+    }
+
+    if (scene->pointLightCount > 0) {
+        context->cl.pointLights = gpu_createPointLightsBuffer(context, scene);
+        if (!context->cl.pointLights) {
+            return false;
+        }
+    }
+
+    if (octree->nodeCount > 0) {
+        context->cl.octreeNodes = gpu_createOctreeNodesBuffer(context, octree);
+        if (!context->cl.octreeNodes) {
+            return false;
+        }
+    }
+
+    if (octree->indexCount > 0) {
+        context->cl.octreeIndexes = gpu_createOctreeIndexesBuffer(context, octree);
+        if (!context->cl.octreeIndexes) {
+            return false;
+        }
+    }
+
     context->cl.randomSeed = gpu_createRandomSeedBuffer(context, scene);
     if (!context->cl.randomSeed) {
         return false;

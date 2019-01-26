@@ -68,6 +68,10 @@ int main(int argc, char* argv[]) {
 	Image* image = image_create(RENDER_WIDTH, RENDER_HEIGHT);
 
 	GPUContext* context = gpu_initContext(scene, octree, raysPerPixel);
+    if (!context) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Failed to create gpuContext.");
+        return 3;
+    }
 
     // wait for quit event before quitting
     bool running = true;
