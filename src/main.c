@@ -74,6 +74,8 @@ int main(int argc, char* argv[]) {
     // wait for quit event before quitting
     bool running = true;
 	bool takeScreenshot = false;
+    bool isSceneChanged = true;
+    bool alwaysRender = false;
 
 	uint32_t previousTime = SDL_GetTicks();
 	double delta = 0.0;
@@ -87,93 +89,102 @@ int main(int argc, char* argv[]) {
 		previousTime = currentTime;
 		delta += elapsed;
 
-        int moveUpDown = 0;
-        int moveSide = 0;
-        int moveFrontal = 0;
+        // update
+        while (delta >= MS_PER_UPDATE) {
+            int moveUpDown = 0;
+            int moveSide = 0;
+            int moveFrontal = 0;
 
-		// input handling
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            switch(event.type) {
-                case SDL_QUIT:
-                    running = false;
-                    break;
-				case SDL_WINDOWEVENT:
-					switch (event.window.event) {
-					case SDL_WINDOWEVENT_SIZE_CHANGED:
-					case SDL_WINDOWEVENT_RESIZED:
-						// onResize: recalculate the scaling
-						viewWidth = event.window.data1;
-						viewHeight = event.window.data2;
-						gpu_updateDimensions(context, viewWidth, viewHeight, RENDER_WIDTH, RENDER_HEIGHT);
-						break;
-					default:
-						break;
-					}
-					break;
-				case SDL_KEYDOWN:
-					switch (event.key.keysym.sym) {
-					case SDLK_w: // move forward
-                        moveUpDown = 1;
-						break;
-					case SDLK_s: // move backward
-                        moveUpDown = -1;
-						break;
-                    case SDLK_a: // turn left
-                        moveSide = -1;
+		    // input handling
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                switch(event.type) {
+                    case SDL_QUIT:
+                        running = false;
                         break;
-                    case SDLK_d: // turn right
-                        moveSide = 1;
+				    case SDL_WINDOWEVENT:
+					    switch (event.window.event) {
+					    case SDL_WINDOWEVENT_SIZE_CHANGED:
+					    case SDL_WINDOWEVENT_RESIZED:
+						    // onResize: recalculate the scaling
+						    viewWidth = event.window.data1;
+						    viewHeight = event.window.data2;
+						    gpu_updateDimensions(context, viewWidth, viewHeight, RENDER_WIDTH, RENDER_HEIGHT);
+                            isSceneChanged = true;
+						    break;
+					    default:
+						    break;
+					    }
+					    break;
+				    case SDL_KEYDOWN:
+					    switch (event.key.keysym.sym) {
+					    case SDLK_w: // move forward
+                            moveUpDown = 1;
+						    break;
+					    case SDLK_s: // move backward
+                            moveUpDown = -1;
+						    break;
+                        case SDLK_a: // turn left
+                            moveSide = -1;
+                            break;
+                        case SDLK_d: // turn right
+                            moveSide = 1;
+                            break;
+                        case SDLK_e: // zoom in
+                            moveFrontal = -1;
+                            break;
+                        case SDLK_q: // zoom out
+                            moveFrontal = 1;
+                            break;
+                        case SDLK_r: // toggle alwaysRender
+                            alwaysRender = !alwaysRender;
+                            break;
+					    case SDLK_PRINTSCREEN:
+						    takeScreenshot = true;
+						    break;
+					    case SDLK_ESCAPE:
+						    running = false;
+						    break;
+					    default:
+						    break;
+					    }
+					    break;
+				    case SDL_KEYUP:
+					    break;
+                    default:
                         break;
-                    case SDLK_e: // zoom in
-                        moveFrontal = 1;
-                        break;
-                    case SDLK_q: // zoom out
-                        moveFrontal = -1;
-                        break;
-					case SDLK_PRINTSCREEN:
-						takeScreenshot = true;
-						break;
-					case SDLK_ESCAPE:
-						running = false;
-						break;
-					default:
-						break;
-					}
-					break;
-				case SDL_KEYUP:
-					break;
-                default:
-                    break;
+                }
             }
-        }
 
-		// update
-		while (delta >= MS_PER_UPDATE) {
-			
-            move_camera(scene->camera, moveUpDown, moveSide, moveFrontal);
-            camera_setup(scene->camera);
+            if (moveUpDown || moveSide || moveFrontal) {
+                move_camera(scene->camera, moveUpDown, moveSide, moveFrontal);
+                camera_setup(scene->camera);
+                isSceneChanged = true;
+            }
 			
 			
 			delta -= MS_PER_UPDATE;
 		}
 
 		// render
-		if (takeScreenshot) {
-			// render to the backbuffer and copy the clImage to the image struct
-			gpu_renderScene(context, scene, image);
+        if (alwaysRender || isSceneChanged || takeScreenshot) {
+            if (takeScreenshot) {
+                // render to the backbuffer and copy the clImage to the image struct
+                gpu_renderScene(context, scene, image);
 
-			char filename[255];
-			time_t now = time(NULL);
-			snprintf(filename, sizeof(filename), "%d_raytracer.bmp", (int) now);
-			
-			bitmap_save_image(filename, image);
-			takeScreenshot = false;
-		} else {
-			// just render to the backbuffer
-			gpu_renderScene(context, scene, NULL);
-		}
-		SDL_GL_SwapWindow(window);
+                char filename[255];
+                time_t now = time(NULL);
+                snprintf(filename, sizeof(filename), "%d_raytracer.bmp", (int)now);
+
+                bitmap_save_image(filename, image);
+                takeScreenshot = false;
+            } else {
+                // just render to the backbuffer
+                gpu_renderScene(context, scene, NULL);
+            }
+            SDL_GL_SwapWindow(window);
+            isSceneChanged = false;
+        }
     }
 
     gpu_destroyContext(context);
