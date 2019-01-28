@@ -17,8 +17,6 @@
 
 #define MS_PER_UPDATE 1000.0 / 60.0
 
-// degrees per tick
-#define CAMERA_ROTATION_SPEED 0.25f;
 
 #define RENDER_WIDTH  1920
 #define RENDER_HEIGHT 1080
@@ -89,6 +87,10 @@ int main(int argc, char* argv[]) {
 		previousTime = currentTime;
 		delta += elapsed;
 
+        int moveUpDown = 0;
+        int moveSide = 0;
+        int moveFrontal = 0;
+
 		// input handling
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -111,14 +113,24 @@ int main(int argc, char* argv[]) {
 					break;
 				case SDL_KEYDOWN:
 					switch (event.key.keysym.sym) {
-					case SDLK_w:
+					case SDLK_w: // move forward
+                        moveUpDown = 1;
 						break;
-					case SDLK_s:
+					case SDLK_s: // move backward
+                        moveUpDown = -1;
 						break;
-					case SDLK_a:
-						break;
-					case SDLK_d:
-						break;
+                    case SDLK_a: // turn left
+                        moveSide = -1;
+                        break;
+                    case SDLK_d: // turn right
+                        moveSide = 1;
+                        break;
+                    case SDLK_e: // zoom in
+                        moveFrontal = 1;
+                        break;
+                    case SDLK_q: // zoom out
+                        moveFrontal = -1;
+                        break;
 					case SDLK_PRINTSCREEN:
 						takeScreenshot = true;
 						break;
@@ -138,15 +150,10 @@ int main(int argc, char* argv[]) {
 
 		// update
 		while (delta >= MS_PER_UPDATE) {
-			// move the camera in a circle around the origin
-			float radius = 40.0f;
-			scene->camera->position.x = radius * cosf(math_deg2rad(deg));
-			scene->camera->position.z = radius * sinf(math_deg2rad(deg));
-			camera_setup(scene->camera);
-			deg += CAMERA_ROTATION_SPEED;
-			if (deg >= 360.0f) {
-				deg = 0.0f;
-			}
+			
+            move_camera(scene->camera, moveUpDown, moveSide, moveFrontal);
+            camera_setup(scene->camera);
+			
 			
 			delta -= MS_PER_UPDATE;
 		}

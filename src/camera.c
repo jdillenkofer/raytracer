@@ -45,6 +45,13 @@ Camera* camera_create(Vec3 position, Vec3 lookAt, uint32_t width, uint32_t heigh
     return camera;
 }
 
+void move_camera(Camera *camera, int upDown, int side, int frontal) {
+
+    camera->position = vec3_add(camera->position, vec3_mul(camera->x, side * 0.5f));
+    camera->position = vec3_add(camera->position, vec3_mul(camera->y, upDown * 0.5f));
+    camera->position = vec3_add(camera->position, vec3_mul(camera->z, frontal * 0.5f));
+}
+
 void camera_destroy(Camera* cam) {
     if (cam) {
         free(cam);
