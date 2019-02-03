@@ -1,11 +1,11 @@
 #ifndef RAYTRACER_GPU_H
 #define RAYTRACER_GPU_H
 
+#include <glad/glad.h>
+
 #ifdef __linux__
 #include <GL/glx.h>
 #endif
-
-#include <glad/glad.h>
 
 #ifdef __APPLE__
 #include <OpenCL/opencl.h>

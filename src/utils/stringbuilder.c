@@ -2,7 +2,6 @@
 
 #include <assert.h>
 #include <stdlib.h>
-#include <string.h>
 
 StringBuilder* stringbuilder_create(size_t intialCapacity) {
 	if (intialCapacity < 1) {

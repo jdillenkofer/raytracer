@@ -190,7 +190,7 @@ static GPUContext* gpu_initCLContext() {
 	cl_context_properties props[] = {
 			CL_GL_CONTEXT_KHR, (cl_context_properties)glXGetCurrentContext(),
 			CL_GLX_DISPLAY_KHR, (cl_context_properties)glXGetCurrentDisplay(),
-			CL_CONTEXT_PLATFORM, (cl_context_properties)context->plat,
+			CL_CONTEXT_PLATFORM, (cl_context_properties)context->cl.platformId,
 			0 };
 #endif
 	context->cl.ctx = clCreateContext(props, 1, &context->cl.deviceId, NULL, NULL, &context->cl.err);

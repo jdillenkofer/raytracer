@@ -1,6 +1,8 @@
 #ifndef RAYTRACER_STRINGBUILDER_H
 #define RAYTRACER_STRINGBUILDER_H
 
+#include <string.h>
+
 typedef struct {
 	size_t capacity;
 	size_t length;
