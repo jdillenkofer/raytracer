@@ -199,6 +199,17 @@ static GPUContext* gpu_initCLContext() {
 }
 
 static bool gpu_allocateCLMemory(GPUContext* context, Scene* scene, Octree* octree) {
+    context->cl.image = NULL;
+    context->cl.camera = NULL;
+    context->cl.materials = NULL;
+    context->cl.planes = NULL;
+    context->cl.spheres = NULL;
+    context->cl.triangles = NULL;
+    context->cl.pointLights = NULL;
+    context->cl.octreeNodes = NULL;
+    context->cl.octreeIndexes = NULL;
+    context->cl.randomSeed = NULL;
+    
 	context->cl.image = gpu_createImageBufferFromTextureId(context, context->gl.texture);
 	if (!context->cl.image) {
 		return false;

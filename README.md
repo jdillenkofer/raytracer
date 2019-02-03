@@ -33,6 +33,8 @@ Dependencies:
 
 ## How to run
 
+- To change the scene edit the scene.c file in the src folder and recompile the project.
+
 ### Windows
 - Run the binary from visual studio by clicking run.
 - If you want to run the executable outside of visual studio, make sure that the sourcecode of the OpenCL kernel and the SDL2.dll is in the current working directory of the binary.

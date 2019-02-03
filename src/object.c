@@ -24,6 +24,13 @@ static void object_skipWhitespace(const char* data, size_t* offset) {
     }
 }
 
+static void object_skipSpacesAndTabs(const char* data, size_t* offset) {
+    const char* dataPtr = &data[*offset];
+    while (*dataPtr != '\0' && (*dataPtr == ' ' || *dataPtr == '\t')) {
+        dataPtr = &data[++(*offset)];
+    }
+}
+
 static bool object_skipToNextLine(const char* data, size_t* offset) {
 	const char* dataPtr = &data[*offset];
     while(*dataPtr != '\0' && *dataPtr != '\n') {
@@ -37,7 +44,7 @@ static bool object_skipToNextLine(const char* data, size_t* offset) {
 }
 
 static bool object_atEndOfLineOrAtEndOfFile(const char* data, size_t* offset) {
-    return data[*offset] == '\n' || data[*offset] == '\0';
+    return data[*offset] == '\r' || data[*offset] == '\n' || data[*offset] == '\0';
 }
 
 #define LOCAL_NUM_BUFFERSIZE 255
@@ -111,16 +118,19 @@ static void object_parseFace(Object* object, VertexTable* vertexTable, const cha
     uint32_t v0Id = object_getInt(data, offset);
     Vec3 v0 = vertextable_getVertexById(vertexTable, v0Id);
     object_skipToNextWhitespace(data, offset);
+    object_skipSpacesAndTabs(data, offset);
 
     object_skipWhitespace(data, offset);
     uint32_t prevId = object_getInt(data, offset);
     Vec3 prevVertex = vertextable_getVertexById(vertexTable, prevId);
     object_skipToNextWhitespace(data, offset);
+    object_skipSpacesAndTabs(data, offset);
 
     while (!object_atEndOfLineOrAtEndOfFile(data, offset)) {
         object_skipWhitespace(data, offset);
         uint32_t v2Id = object_getInt(data, offset);
         object_skipToNextWhitespace(data, offset);
+        object_skipSpacesAndTabs(data, offset);
         Vec3 v2 = vertextable_getVertexById(vertexTable, v2Id);
         Triangle triangle;
         triangle.v0 = v0;
@@ -148,6 +158,10 @@ Object* object_loadFromFile(const char* filepath) {
                 if (data[offset+1] == 'n') {
                     continue;
                 }
+                // vt
+                if (data[offset + 1] == 't') {
+                    continue;
+                }
                 // v
                 object_parseVertex(vertexTable, data, &offset);
                 break;
@@ -159,6 +173,7 @@ Object* object_loadFromFile(const char* filepath) {
             }
             case '#':
             case 'g':
+            case 's':
             default:
                 break;
         }

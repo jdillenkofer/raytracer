@@ -1,3 +1,5 @@
+#define MAX_NODE_STACK_SIZE 250
+
 #ifdef USE_SHARED_MEMORY_CAMERA
 	#define CAMERA_QUALIFIER __local
 #else
@@ -501,7 +503,7 @@ static void raytracer_calcClosestPlaneIntersect(PLANES_QUALIFIER Plane* planes, 
 
 static bool raytracer_isAnyIntersectUsingOctreeCloserThan(SPHERES_QUALIFIER Sphere* spheres, uint32_t sphereCount, TRIANGLES_QUALIFIER Triangle* triangles, uint32_t triangleCount,
     Ray* ray, OCTREENODES_QUALIFIER OctreeNode* octreeNodes, OCTREEINDEX_QUALIFIER uint32_t* octreeIndexes, float minDistance) {
-    uint32_t nodesToCheck[200];
+    uint32_t nodesToCheck[MAX_NODE_STACK_SIZE];
     uint32_t nodesToCheckCount = 0;
 
     // push root to the stack

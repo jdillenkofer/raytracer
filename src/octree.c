@@ -218,11 +218,11 @@ static void octree_buildNode(Octree* octree, Scene* scene, int32_t nodeId,
 	octree->nodes[nodeId].boundingBox = boundingBox;
 
 	uint32_t sphereElementsInside = 0;
-	uint32_t sphereElementsCapacity = 100;
+	uint32_t sphereElementsCapacity = 10;
 	uint32_t* sphereIndexesInside = malloc(sizeof(uint32_t) * sphereElementsCapacity);
 
 	uint32_t triangleElementsInside = 0;
-	uint32_t triangleElementsCapacity = 100;
+	uint32_t triangleElementsCapacity = 10;
 	uint32_t* triangleIndexesInside = malloc(sizeof(uint32_t) * triangleElementsCapacity);
 
 	for (uint32_t i = 0; i < sphereIndexCount; i++) {
@@ -284,6 +284,8 @@ static void octree_buildNode(Octree* octree, Scene* scene, int32_t nodeId,
 		octree->nodes[nodeId].childNodeIndexes[5] = childId6;
 		octree->nodes[nodeId].childNodeIndexes[6] = childId7;
 		octree->nodes[nodeId].childNodeIndexes[7] = childId8;
+        octree->nodes[nodeId].sphereIndexCount = 0;
+        octree->nodes[nodeId].triangleIndexCount = 0;
 
 		// front bottom left
 		BoundingBox bbFrontBottomLeft = (BoundingBox) { boundingBox.bottomLeftFrontCorner, centerOfBoundingBox };
@@ -341,9 +343,6 @@ static void octree_buildNode(Octree* octree, Scene* scene, int32_t nodeId,
 		// back top right
 		BoundingBox bbBackTopRight = (BoundingBox) { centerOfBoundingBox, boundingBox.topRightBackCorner };
 		octree_buildNode(octree, scene, childId8, sphereIndexesInside, sphereElementsInside, triangleIndexesInside, triangleElementsInside, bbBackTopRight);
-
-		octree->nodes[nodeId].sphereIndexCount = 0;
-		octree->nodes[nodeId].triangleIndexCount = 0;
 	} else {
 		// here we can temporarily take a pointer to the array, because
 		// we don't call octree_buildNode here.
@@ -391,7 +390,7 @@ Octree* octree_buildFromScene(Scene* scene) {
 	octree->nodeCapacity = 1;
 	octree->nodeCount = 0;
 	octree->nodes = malloc(sizeof(OctreeNode) * octree->nodeCapacity);
-	octree->indexCapacity = 1;
+	octree->indexCapacity = 2000;
 	octree->indexCount= 0;
 	octree->indexes = malloc(sizeof(uint32_t) * octree->indexCapacity);
 

@@ -95,6 +95,15 @@ Scene* scene_init(uint32_t width, uint32_t height) {
         yellow.specularExponent = 64.0f;
 		uint32_t yellowId = scene_addMaterial(scene, yellow);
 
+        Material metal = { 0 };
+        metal.color = (Vec3) { 0.81f, 0.83f, 0.84f };
+        metal.reflectionIndex = 0.3f;
+        metal.ambientWeight = 0.2f;
+        metal.diffuseWeight = 1.0f;
+        metal.specularWeight = 1.0f;
+        metal.specularExponent = 64.0f;
+        uint32_t metalId = scene_addMaterial(scene, metal);
+
 		Plane floor = { 0 };
 		floor.materialIndex = greyId;
 		floor.normal = (Vec3) { 0.0f, 1.0f, 0.0f };
@@ -157,6 +166,13 @@ Scene* scene_init(uint32_t width, uint32_t height) {
 		scene_addPointLight(scene, pointLight);
 
 		/*
+                Object* falcon = object_loadFromFile("millenium-falcon.obj");
+                object_scale(falcon, 0.01f);
+                object_translate(falcon, (Vec3) { 0.0f, 1.0f, 0.0f });
+                object_materialIndex(falcon, metalId);
+                scene_addObject(scene, *falcon);
+                object_destroy(falcon);
+
 				Object* teapot = object_loadFromFile("teapot.obj");
 				object_scale(teapot, 0.01f);
 				object_translate(teapot, (Vec3) { 3.0f, 1.0f, 5.0f });
