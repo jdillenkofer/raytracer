@@ -15,7 +15,7 @@ const char* file_readFile(const char* filepath, size_t* fileSize)
         return NULL;
     }
     fseek(file, 0L, SEEK_END);
-    size = ftell(file);
+    size = (size_t) ftell(file);
     rewind(file);
     data = malloc(size + 1);
     fread(data, size, 1, file);

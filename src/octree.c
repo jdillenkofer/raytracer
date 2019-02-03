@@ -16,8 +16,8 @@ static BoundingBox octree_calculateRootBoundingBox(Scene* scene) {
 			vec3_add(sphere->position, (Vec3) { -sphere->radius, 0.0f, 0.0f }), // LEFT
 			vec3_add(sphere->position, (Vec3) { sphere->radius, 0.0f, 0.0f }) // RIGHT
 		};
-		for (uint32_t i = 0; i < 6; i++) {
-			Vec3* v = &extremePoints[i];
+		for (uint32_t x = 0; x < 6; x++) {
+			Vec3* v = &extremePoints[x];
 			if (v->x < boundingBox.bottomLeftFrontCorner.x) {
 				boundingBox.bottomLeftFrontCorner.x = v->x;
 			}
@@ -42,8 +42,8 @@ static BoundingBox octree_calculateRootBoundingBox(Scene* scene) {
 	for (uint32_t i = 0; i < scene->triangleCount; i++) {
 		Triangle* triangle = &scene->triangles[i];
 		Vec3 vertices[3] = { triangle->v0, triangle->v1, triangle->v2 };
-		for (uint32_t i = 0; i < 3; i++) {
-			Vec3* v = &vertices[i];
+		for (uint32_t x = 0; x < 3; x++) {
+			Vec3* v = &vertices[x];
 			if (v->x < boundingBox.bottomLeftFrontCorner.x) {
 				boundingBox.bottomLeftFrontCorner.x = v->x;
 			}
@@ -201,8 +201,8 @@ static bool octree_intersectTriangle(Triangle* triangle, BoundingBox boundingBox
 }
 
 static void octree_buildNode(Octree* octree, Scene* scene, int32_t nodeId,
-	int32_t* sphereIndexes, uint32_t sphereIndexCount, 
-	int32_t* triangleIndexes, uint32_t triangleIndexCount, 
+	uint32_t* sphereIndexes, uint32_t sphereIndexCount, 
+	uint32_t* triangleIndexes, uint32_t triangleIndexCount, 
 	BoundingBox boundingBox) {
 	if (octree->nodeCount + 1 > octree->nodeCapacity) {
 		octree->nodeCapacity *= 2;
@@ -267,14 +267,14 @@ static void octree_buildNode(Octree* octree, Scene* scene, int32_t nodeId,
 		Vec3 halfDiagonal = vec3_mul(diagonal, 0.5f);
 		Vec3 centerOfBoundingBox = vec3_add(boundingBox.bottomLeftFrontCorner, halfDiagonal);
 
-		int32_t childId1 = octree->nodeCount++;
-		int32_t childId2 = octree->nodeCount++;
-		int32_t childId3 = octree->nodeCount++;
-		int32_t childId4 = octree->nodeCount++;
-		int32_t childId5 = octree->nodeCount++;
-		int32_t childId6 = octree->nodeCount++;
-		int32_t childId7 = octree->nodeCount++;
-		int32_t childId8 = octree->nodeCount++;
+		int32_t childId1 = (int32_t) octree->nodeCount++;
+		int32_t childId2 = (int32_t) octree->nodeCount++;
+		int32_t childId3 = (int32_t) octree->nodeCount++;
+		int32_t childId4 = (int32_t) octree->nodeCount++;
+		int32_t childId5 = (int32_t) octree->nodeCount++;
+		int32_t childId6 = (int32_t) octree->nodeCount++;
+		int32_t childId7 = (int32_t) octree->nodeCount++;
+		int32_t childId8 = (int32_t) octree->nodeCount++;
 
 		octree->nodes[nodeId].childNodeIndexes[0] = childId1;
 		octree->nodes[nodeId].childNodeIndexes[1] = childId2;

@@ -80,8 +80,6 @@ int main(int argc, char* argv[]) {
 	uint32_t previousTime = SDL_GetTicks();
 	double delta = 0.0;
 
-	float deg = 0.0f;
-
     while(running) {
 
 		uint32_t currentTime = SDL_GetTicks();
@@ -107,8 +105,8 @@ int main(int argc, char* argv[]) {
 					    case SDL_WINDOWEVENT_SIZE_CHANGED:
 					    case SDL_WINDOWEVENT_RESIZED:
 						    // onResize: recalculate the scaling
-						    viewWidth = event.window.data1;
-						    viewHeight = event.window.data2;
+						    viewWidth = (uint32_t) event.window.data1;
+						    viewHeight = (uint32_t) event.window.data2;
 						    gpu_updateDimensions(context, viewWidth, viewHeight, RENDER_WIDTH, RENDER_HEIGHT);
                             isSceneChanged = true;
 						    break;

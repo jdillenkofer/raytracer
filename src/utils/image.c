@@ -49,7 +49,6 @@ bool bitmap_save_image(const char* path, Image* image) {
 
     fwrite(&bitmapFileHeader, sizeof(BitmapFileHeader), 1, file);
     fwrite(&bitmapInfoHeader, sizeof(BitmapInfoHeader), 1, file);
-    uint32_t bytesPerRow = (uint32_t) (image->width * sizeof(uint32_t));
 	for (uint32_t y = image->height; y-- > 0;) {
 		for (uint32_t x = 0; x < image->width; x++) {
 			uint32_t color = image->buffer[y * image->width + x];
